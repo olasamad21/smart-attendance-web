@@ -1,26 +1,81 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-primary: #00535b;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #006d77;
+  --color-on-primary-container: #9becf7;
+  --color-secondary: #236863;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #a9ece5;
+  --color-on-secondary-container: #286d67;
+  --color-tertiary: #434c4f;
+  --color-on-tertiary: #ffffff;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-background: #f9f9ff;
+  --color-on-background: #121c2c;
+  --color-surface: #f9f9ff;
+  --color-on-surface: #121c2c;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f3ff;
+  --color-surface-container: #e7eeff;
+  --color-surface-container-high: #dee8ff;
+  --color-surface-container-highest: #d9e3f9;
+  --color-on-surface-variant: #3e494a;
+  --color-surface-variant: #d9e3f9;
+  --color-outline: #6f797a;
+  --color-outline-variant: #bec8ca;
+  --color-inverse-surface: #273141;
+  --color-inverse-on-surface: #ebf1ff;
+  --color-secondary-fixed: #acefe7;
+  --color-primary-fixed: #9ff0fb;
+
+  --font-family-sans: 'Inter', sans-serif;
+
+  --spacing-container-padding: 20px;
+  --spacing-stack-gap: 16px;
+  --spacing-element-gap: 12px;
+  --spacing-section-margin: 32px;
+  --spacing-touch-target: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.card-shadow {
+  box-shadow: 0px 2px 8px rgba(0, 109, 119, 0.05);
 }
+
+.card-interactive:active {
+  transform: scale(0.98);
+}
+
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
+  background-color: #f9f9ff;
+  color: #121c2c;
 }
