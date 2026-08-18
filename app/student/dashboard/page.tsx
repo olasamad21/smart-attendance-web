@@ -24,8 +24,8 @@ export default function StudentDashboard() {
   const [studentRecords, setStudentRecords] = useState<Record<string, AttendanceRecord>>({});
   const [faceEnrolled, setFaceEnrolled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [, setTick] = useState(0);
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const [tick, setTick] = useState(0);
+  const firstName = user?.name || 'there';
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
@@ -36,7 +36,7 @@ export default function StudentDashboard() {
     if (!user?.userId) return;
     Promise.all([
       getStudentCourses(user.userId),
-      checkFaceEnrolled(user.userId),
+      checkFaceEnrolled(user.userId).catch(() => ({ enrolled: false })),
     ]).then(async ([courseData, faceStatus]) => {
       setCourses(courseData);
       setFaceEnrolled(faceStatus.enrolled);
@@ -144,7 +144,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background min-h-[100dvh]">
       <TopAppBar />
       <main className="px-5 pt-5 max-w-lg mx-auto pb-8 flex flex-col gap-5">
 

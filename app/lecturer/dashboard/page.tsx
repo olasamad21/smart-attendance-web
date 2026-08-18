@@ -36,10 +36,10 @@ export default function LecturerDashboard() {
       .finally(() => setIsLoading(false));
   }, [user?.userId]);
 
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const firstName = user?.name || 'there';
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background min-h-[100dvh]">
       <TopAppBar />
       <main className="px-container-padding pt-6 max-w-lg mx-auto flex flex-col gap-section-margin pb-8">
 
