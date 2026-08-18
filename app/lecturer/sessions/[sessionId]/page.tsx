@@ -167,7 +167,7 @@ export default function LiveSessionPage() {
   const absent = getAbsentStudents();
 
   return (
-    <div className="bg-background min-h-screen pb-8">
+    <div className="bg-background pb-8">
       <header className="bg-surface sticky top-0 z-50 shadow-sm">
         <div className="flex items-center justify-between px-5 h-12 max-w-lg mx-auto">
           <Link href={`/lecturer/courses/${session?.courseId}`}

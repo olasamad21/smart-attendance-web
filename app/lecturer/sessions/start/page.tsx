@@ -61,7 +61,7 @@ export default function StartSessionPage() {
   const durations = [5, 10, 15, 20, 30, 45, 60];
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Start Session" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 

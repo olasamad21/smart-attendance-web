@@ -39,7 +39,7 @@ export default function LecturerDashboard() {
   const firstName = user?.name || 'there';
 
   return (
-    <div className="bg-background min-h-[100dvh]">
+    <div className="bg-background">
       <TopAppBar />
       <main className="px-container-padding pt-6 max-w-lg mx-auto flex flex-col gap-section-margin pb-8">
 

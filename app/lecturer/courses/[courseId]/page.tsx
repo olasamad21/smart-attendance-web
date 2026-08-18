@@ -98,7 +98,7 @@ export default function CourseDetailPage() {
   const durations = [30, 45, 60, 90, 120];
 
   return (
-    <div className="bg-background min-h-screen pb-8">
+    <div className="bg-background pb-8">
       <TopAppBar 
         title={course.courseCode} 
         showBack={true} 
