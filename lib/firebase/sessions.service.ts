@@ -47,6 +47,17 @@ export async function updateSessionStatus(
   await updateDoc(doc(db, 'sessions', sessionId), { status });
 }
 
+export async function startPhase2Early(sessionId: string, durationMinutes: number): Promise<void> {
+  const now = new Date();
+  const phase2End = new Date(now.getTime() + durationMinutes * 60000);
+  
+  await updateDoc(doc(db, 'sessions', sessionId), {
+    status: 'phase2_open',
+    phase2Start: serverTimestamp(),
+    phase2End: Timestamp.fromDate(phase2End),
+  });
+}
+
 export async function endSession(sessionId: string): Promise<void> {
   await updateDoc(doc(db, 'sessions', sessionId), {
     status: 'ended',
