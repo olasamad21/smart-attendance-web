@@ -73,7 +73,7 @@ export default function ClassroomsPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Classrooms" />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
         <div className="flex items-center justify-between mb-6">

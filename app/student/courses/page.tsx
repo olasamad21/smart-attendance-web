@@ -80,7 +80,7 @@ export default function StudentCoursesPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Courses" />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 

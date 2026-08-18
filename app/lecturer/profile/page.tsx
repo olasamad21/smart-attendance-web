@@ -21,7 +21,7 @@ export default function LecturerProfilePage() {
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) || '??';
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Profile" />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 

@@ -64,7 +64,7 @@ export default function StatisticsPage() {
 
   if (isLoading) {
     return (
-      <div className="bg-background min-h-screen">
+      <div className="bg-background">
         <TopAppBar title="Statistics" showBack={true} />
         <main className="px-5 pt-6 max-w-lg mx-auto flex justify-center mt-20">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -196,7 +196,7 @@ export default function StatisticsPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Statistics" showBack={true} />
 
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">

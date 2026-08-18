@@ -77,7 +77,7 @@ export default function CourseHistoryPage() {
   }, [user, courseId]);
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <TopAppBar title="Course History" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
         {loading ? (
