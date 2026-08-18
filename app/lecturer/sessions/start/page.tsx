@@ -16,6 +16,7 @@ export default function StartSessionPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
+  const [totalDuration, setTotalDuration] = useState(60);
   const [phase1Duration, setPhase1Duration] = useState(15);
   const [phase2Duration, setPhase2Duration] = useState(15);
   const [starting, setStarting] = useState(false);
@@ -24,13 +25,21 @@ export default function StartSessionPage() {
 
   useEffect(() => {
     Promise.all([getCourseById(courseId), getClassrooms()])
-      .then(([c, cl]) => { setCourse(c); setClassrooms(cl); })
+      .then(([c, cl]) => { 
+        setCourse(c); 
+        setClassrooms(cl); 
+        if (c?.defaultDuration) setTotalDuration(c.defaultDuration);
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [courseId]);
 
   const handleStart = async () => {
     if (!selectedClassroom) { setError('Please select a classroom'); return; }
+    if (phase1Duration + phase2Duration >= totalDuration) {
+      setError('Total class duration must be larger than Phase 1 + Phase 2 durations combined to allow for a waiting period.');
+      return;
+    }
     if (!course || !user) return;
     setStarting(true); setError('');
     try {
@@ -44,6 +53,7 @@ export default function StartSessionPage() {
         classroomLat: selectedClassroom.latitude,
         classroomLng: selectedClassroom.longitude,
         classroomRadius: selectedClassroom.radius,
+        totalDuration,
         phase1Duration,
         phase2Duration,
       });
@@ -103,6 +113,18 @@ export default function StartSessionPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="mb-6">
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Total Class Duration</h3>
+          <div className="flex gap-2 flex-wrap">
+            {[15, 30, 45, 60, 90, 120].map(d => (
+              <button key={`total-${d}`} onClick={() => setTotalDuration(d)}
+                className={`px-4 h-9 rounded-full text-xs font-semibold border transition-all active:scale-95 ${totalDuration === d ? 'bg-primary-container text-on-primary-container border-primary-container' : 'bg-surface-container-low text-on-surface-variant border-outline-variant'}`}>
+                {d} min
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="mb-6">

@@ -46,7 +46,6 @@ export default function LecturerDashboard() {
         {/* Greeting */}
         <section>
           <h2 className="text-display font-bold text-on-surface">{getGreeting()}, {firstName}</h2>
-          <p className="text-body-md text-on-surface-variant mt-1">Here is your verification overview for today.</p>
         </section>
 
         {/* Bento Stats Grid */}
