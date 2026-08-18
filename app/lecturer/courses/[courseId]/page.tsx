@@ -6,6 +6,8 @@ import { ArrowLeft, Users, Clock, Play, BarChart2, FileText, Trash2, Edit2 } fro
 import { useAuthStore } from '@/store/auth.store';
 import { getCourseById, getEnrolledStudents, deleteCourse, updateCourseSettingsWithRetroactiveScoring } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
+import { getSessionAttendance } from '@/lib/firebase/attendance.service';
+import { downloadCSV } from '@/lib/utils/csv.utils';
 import { Course, UserProfile, Session } from '@/types';
 import TopAppBar from '@/components/layout/TopAppBar';
 
@@ -169,20 +171,27 @@ export default function CourseDetailPage() {
           Start Attendance Session
         </button>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-3 mb-8">
           <Link
             href={`/lecturer/courses/${course.courseId}/reports`}
-            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex items-center justify-center gap-2 text-on-surface active:scale-95 transition-all card-shadow"
+            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-3 flex items-center justify-center gap-1.5 text-on-surface active:scale-95 transition-all card-shadow"
           >
-            <span className="material-symbols-outlined">description</span>
-            <span className="text-sm font-semibold">Reports</span>
+            <span className="material-symbols-outlined text-lg">description</span>
+            <span className="text-xs font-semibold">Reports</span>
+          </Link>
+          <Link
+            href={`/lecturer/courses/${course.courseId}/statistics`}
+            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-3 flex items-center justify-center gap-1.5 text-on-surface active:scale-95 transition-all card-shadow"
+          >
+            <span className="material-symbols-outlined text-lg">bar_chart</span>
+            <span className="text-xs font-semibold">Statistics</span>
           </Link>
           <button
             onClick={() => setEditingCourse(true)}
-            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex items-center justify-center gap-2 text-on-surface active:scale-95 transition-all card-shadow"
+            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-3 flex items-center justify-center gap-1.5 text-on-surface active:scale-95 transition-all card-shadow"
           >
-            <span className="material-symbols-outlined">edit</span>
-            <span className="text-sm font-semibold">Edit Course Settings</span>
+            <span className="material-symbols-outlined text-lg">edit</span>
+            <span className="text-xs font-semibold">Settings</span>
           </button>
         </div>
 
@@ -194,26 +203,53 @@ export default function CourseDetailPage() {
             <h2 className="font-bold text-on-surface mb-4">Recent Sessions</h2>
             <div className="flex flex-col gap-3">
               {sessions.slice(0, 3).map(s => (
-                <Link key={s.sessionId} href={`/lecturer/sessions/${s.sessionId}`} className="block border border-outline-variant/30 rounded-xl p-4 hover:border-primary/50 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-on-surface text-sm">
-                        {s.createdAt ? new Date((s.createdAt as any).seconds ? (s.createdAt as any).seconds * 1000 : s.createdAt).toLocaleDateString() : 'Unknown Date'}
-                      </p>
-                      <p className="text-xs text-on-surface-variant mt-1">{s.classroomName}</p>
+                <div key={s.sessionId} className="flex items-center gap-2 border border-outline-variant/30 rounded-xl hover:border-primary/50 transition-all">
+                  <Link href={`/lecturer/sessions/${s.sessionId}`} className="flex-1 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-on-surface text-sm">
+                          {s.createdAt ? new Date((s.createdAt as any).seconds ? (s.createdAt as any).seconds * 1000 : s.createdAt).toLocaleDateString() : 'Unknown Date'}
+                        </p>
+                        <p className="text-xs text-on-surface-variant mt-1">{s.classroomName}</p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                        s.status === 'ended' ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary-container text-on-primary-container'
+                      }`}>
+                        {s.status === 'ended' ? 'Ended' : 'Active'}
+                      </span>
                     </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                      s.status === 'ended' ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary-container text-on-primary-container'
-                    }`}>
-                      {s.status === 'ended' ? 'Ended' : 'Active'}
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
+                  {s.status === 'ended' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const records = await getSessionAttendance(s.sessionId);
+                          const enrolled = students;
+                          const attendedIds = new Set(records.filter(r => r.phase1Score > 0 || r.phase2Score > 0).map(r => r.studentId));
+                          const attended = records.filter(r => attendedIds.has(r.studentId)).sort((a, b) => a.studentName.localeCompare(b.studentName));
+                          const absent = enrolled.filter(st => !attendedIds.has(st.userId)).sort((a, b) => a.name.localeCompare(b.name));
+                          const headers = ['S/N', 'Student Name', 'Matric No', 'Phase 1', 'Phase 2', 'Total', 'Status'];
+                          const rows: (string | number)[][] = [];
+                          let sn = 1;
+                          attended.forEach(a => rows.push([sn++, a.studentName, a.matricNumber, a.phase1Score, a.phase2Score, a.totalScore, 'Present']));
+                          absent.forEach(st => rows.push([sn++, st.name, st.matricNumber || '', 0, 0, 0, 'Absent']));
+                          const date = s.createdAt ? new Date((s.createdAt as any).seconds ? (s.createdAt as any).seconds * 1000 : s.createdAt).toLocaleDateString().replace(/\//g, '-') : 'session';
+                          downloadCSV(`${course.courseCode}_${date}_Full.csv`, headers, rows);
+                        } catch (err) { console.error('Download failed:', err); }
+                      }}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-primary-container/30 active:scale-95 transition-all mr-2 shrink-0"
+                      title="Quick Download Report"
+                    >
+                      <span className="material-symbols-outlined text-lg">download</span>
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
             {sessions.length > 3 && (
               <div className="mt-4 text-center">
-                <Link href={`/lecturer/courses/${course.courseId}/sessions`} className="text-sm font-medium text-primary hover:underline">
+                <Link href={`/lecturer/courses/${course.courseId}/reports`} className="text-sm font-medium text-primary hover:underline">
                   View All Sessions
                 </Link>
               </div>

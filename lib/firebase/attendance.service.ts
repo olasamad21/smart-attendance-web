@@ -76,12 +76,40 @@ export async function recordPhase2(
   });
 }
 
+export async function awardFullMarksAndEnd(sessionId: string, phase2MaxScore: number): Promise<void> {
+  // Get all records for this session where student checked in during Phase 1
+  const q = query(
+    collection(db, 'attendance'),
+    where('sessionId', '==', sessionId)
+  );
+  const snap = await getDocs(q);
+  
+  const updates = snap.docs.map(async (d) => {
+    const data = d.data() as AttendanceRecord;
+    // If they got points in Phase 1, award them Phase 2 points
+    if (data.phase1Score > 0) {
+      await updateDoc(doc(db, 'attendance', d.id), {
+        phase2Score: phase2MaxScore,
+        phase2Time: serverTimestamp(),
+        phase2Status: 'present',
+        totalScore: data.phase1Score + phase2MaxScore,
+        remark: 'Present (Emergency)',
+      });
+    }
+  });
+  
+  await Promise.all(updates);
+  
+  // Import endSession dynamically to avoid circular dependencies if any
+  const { endSession } = await import('./sessions.service');
+  await endSession(sessionId);
+}
+
 export async function getSessionAttendance(sessionId: string): Promise<AttendanceRecord[]> {
   if (!sessionId) return [];
   const q = query(
     collection(db, 'attendance'),
-    where('sessionId', '==', sessionId),
-    orderBy('phase1Time', 'asc')
+    where('sessionId', '==', sessionId)
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ attendanceId: d.id, ...d.data() } as AttendanceRecord));

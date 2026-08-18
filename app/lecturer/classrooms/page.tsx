@@ -5,6 +5,12 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { getClassrooms, createClassroom, deleteClassroom } from '@/lib/firebase/classrooms.service';
 import { Classroom } from '@/types';
 import { getCurrentPosition } from '@/lib/utils/gps.utils';
+import dynamic from 'next/dynamic';
+
+const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), { 
+  ssr: false,
+  loading: () => <div className="h-64 w-full bg-surface-container-low animate-pulse rounded-2xl flex items-center justify-center text-on-surface-variant text-sm">Loading Map...</div>
+});
 
 export default function ClassroomsPage() {
   const { user } = useAuthStore();
@@ -25,7 +31,14 @@ export default function ClassroomsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleGetLocation = async () => {
+  // Auto-fetch location when modal opens if we don't have one yet
+  useEffect(() => {
+    if (showModal && !form.latitude) {
+      handleGetLocation();
+    }
+  }, [showModal]);
+
+  async function handleGetLocation() {
     setGettingLocation(true);
     try {
       const pos = await getCurrentPosition();
@@ -147,23 +160,15 @@ export default function ClassroomsPage() {
                   className="w-full h-12 border border-primary text-primary rounded-lg text-sm font-semibold active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-lg">my_location</span>
-                  {gettingLocation ? 'Getting location...' : 'Use Current Location'}
+                  {gettingLocation ? 'Getting location...' : 'Find My Location'}
                 </button>
-                {form.latitude && (
-                  <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant text-center">
-                    📍 {form.latitude}, {form.longitude}
-                  </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant">Allowed Radius (meters)</label>
-                  <input
-                    value={form.radius}
-                    onChange={e => setForm({...form, radius: e.target.value})}
-                    type="number"
-                    placeholder="100"
-                    className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
-                </div>
+                
+                <ClassroomMap 
+                  center={{ lat: parseFloat(form.latitude) || 0, lng: parseFloat(form.longitude) || 0 }}
+                  radius={parseInt(form.radius) || 100}
+                  onLocationChange={(lat, lng) => setForm(f => ({ ...f, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
+                  onRadiusChange={(radius) => setForm(f => ({ ...f, radius: radius.toString() }))}
+                />
                 <div className="flex gap-3 mt-2">
                   <button
                     onClick={() => { setShowModal(false); setError(''); }}
