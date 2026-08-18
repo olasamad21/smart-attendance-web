@@ -13,7 +13,7 @@ export default function LecturerBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-surface-container-lowest fixed bottom-0 w-full z-50 border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
+    <nav className="bg-surface-container-lowest fixed bottom-0 w-full z-50 border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex justify-around items-center h-[72px] w-full px-2 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/');

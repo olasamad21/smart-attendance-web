@@ -29,7 +29,7 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="bg-background min-h-screen pb-20">
+    <div className="bg-background min-h-[100dvh] pb-20">
       {children}
       <LecturerBottomNav />
     </div>
