@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Users, Clock, Play, BarChart2, FileText, Trash2, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { getCourseById, getEnrolledStudents, deleteCourse, updateCourseSettingsWithRetroactiveScoring } from '@/lib/firebase/courses.service';
-import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
+import { getSessionsForCourse, getActiveSessionWithSync } from '@/lib/firebase/sessions.service';
 import { getSessionAttendance } from '@/lib/firebase/attendance.service';
 import { downloadCSV } from '@/lib/utils/csv.utils';
 import { Course, UserProfile, Session } from '@/types';
@@ -18,6 +18,7 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,11 +50,19 @@ export default function CourseDetailPage() {
       .then(setSessions)
       .catch(e => console.warn('Sessions not loaded:', e));
       
+    getActiveSessionWithSync(courseId)
+      .then(s => setActiveSession(s && s.status !== 'ended' ? s : null))
+      .catch(() => setActiveSession(null));
+      
   }, [courseId]);
 
   const handleStartSession = () => {
     if (!course) return;
-    router.push(`/lecturer/sessions/start?courseId=${course.courseId}`);
+    if (activeSession) {
+      router.push(`/lecturer/sessions/${activeSession.sessionId}`);
+    } else {
+      router.push(`/lecturer/sessions/start?courseId=${course.courseId}`);
+    }
   };
 
   const handleUpdateCourseSettings = async () => {
@@ -112,9 +121,11 @@ export default function CourseDetailPage() {
               <h1 className="text-2xl font-bold text-on-surface">{course.courseTitle}</h1>
               <p className="text-sm text-on-surface-variant mt-1">Lecturer: {course.lecturerName}</p>
             </div>
-            <button onClick={handleDelete} className="text-error hover:bg-error-container/50 p-2 rounded-full transition-all">
-              <span className="material-symbols-outlined text-[20px]">delete</span>
-            </button>
+            {!activeSession && (
+              <button onClick={handleDelete} className="text-error hover:bg-error-container/50 p-2 rounded-full transition-all">
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+              </button>
+            )}
           </div>
 
           {course.enrollmentKey && (
@@ -165,10 +176,12 @@ export default function CourseDetailPage() {
         {/* Action Buttons */}
         <button
           onClick={handleStartSession}
-          className="w-full h-14 bg-primary-container text-on-primary-container rounded-2xl font-semibold flex items-center justify-center gap-2 mb-4 active:scale-95 transition-all"
+          className={`w-full h-14 text-on-primary-container rounded-2xl font-semibold flex items-center justify-center gap-2 mb-4 active:scale-95 transition-all ${
+            activeSession ? 'bg-secondary-container text-on-secondary-container shadow-[0_0_15px_rgba(169,236,229,0.5)]' : 'bg-primary-container'
+          }`}
         >
-          <span className="material-symbols-outlined">play_arrow</span>
-          Start Attendance Session
+          <span className="material-symbols-outlined">{activeSession ? 'forward' : 'play_arrow'}</span>
+          {activeSession ? 'Return to Live Session' : 'Start Attendance Session'}
         </button>
 
         <div className="grid grid-cols-3 gap-3 mb-8">
@@ -188,7 +201,10 @@ export default function CourseDetailPage() {
           </Link>
           <button
             onClick={() => setEditingCourse(true)}
-            className="h-14 bg-surface-container-lowest border border-outline-variant rounded-2xl p-3 flex items-center justify-center gap-1.5 text-on-surface active:scale-95 transition-all card-shadow"
+            disabled={!!activeSession}
+            className={`h-14 border rounded-2xl p-3 flex items-center justify-center gap-1.5 transition-all card-shadow ${
+              activeSession ? 'bg-surface-container-high border-outline-variant/30 text-on-surface-variant/50 cursor-not-allowed' : 'bg-surface-container-lowest border-outline-variant text-on-surface active:scale-95'
+            }`}
           >
             <span className="material-symbols-outlined text-lg">edit</span>
             <span className="text-xs font-semibold">Settings</span>

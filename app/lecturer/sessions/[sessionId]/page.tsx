@@ -252,7 +252,7 @@ export default function LiveSessionPage() {
             </div>
 
             {/* Quick Actions */}
-            {(session?.status === 'phase1_open' || session?.status === 'waiting') && (
+            {session?.status === 'waiting' && (
               <button
                 onClick={() => setShowPhase2Dialog(true)}
                 className="w-full mb-6 bg-secondary-container text-on-secondary-container rounded-xl h-12 font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all"

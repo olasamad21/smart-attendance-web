@@ -16,14 +16,15 @@ export async function startSession(data: {
   classroomLat: number;
   classroomLng: number;
   classroomRadius: number;
+  totalDuration: number;
   phase1Duration: number;
   phase2Duration: number;
 }): Promise<Session> {
   const sessionId = doc(collection(db, 'sessions')).id;
   const now = new Date();
   const phase1End = new Date(now.getTime() + data.phase1Duration * 60000);
-  const phase2Start = new Date(phase1End.getTime() + 5 * 60000);
-  const phase2End = new Date(phase2Start.getTime() + data.phase2Duration * 60000);
+  const phase2Start = new Date(now.getTime() + data.totalDuration * 60000 - data.phase2Duration * 60000);
+  const phase2End = new Date(now.getTime() + data.totalDuration * 60000);
 
   const session: any = {
     sessionId,
