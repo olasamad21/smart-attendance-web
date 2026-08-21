@@ -30,6 +30,11 @@ export default function VerifyPage() {
   const [confidence, setConfidence] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [phase, setPhase] = useState<'phase1' | 'phase2'>('phase1');
+  
+  const [cameraReady, setCameraReady] = useState(false);
+  const [livenessState, setLivenessState] = useState<'waiting_face' | 'waiting_blink' | 'blink_detected'>('waiting_face');
+  const [faceDetectorSupported, setFaceDetectorSupported] = useState(true);
+  const blinkTracker = useRef<{ lastEyeOpen: boolean; blinkCount: number }>({ lastEyeOpen: true, blinkCount: 0 });
 
   useEffect(() => {
     if (!courseId || !user) return;
@@ -64,6 +69,9 @@ export default function VerifyPage() {
 
   const startCamera = async () => {
     setStep('camera');
+    setLivenessState('waiting_face');
+    blinkTracker.current = { lastEyeOpen: true, blinkCount: 0 };
+    setCameraReady(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
@@ -71,6 +79,9 @@ export default function VerifyPage() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          setCameraReady(true);
+        };
         videoRef.current.play().catch(e => console.log('play interrupted', e));
       }
     } catch {
@@ -82,6 +93,7 @@ export default function VerifyPage() {
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
+    setCameraReady(false);
   };
 
   const captureAndVerify = async () => {
@@ -146,6 +158,76 @@ export default function VerifyPage() {
     }
   };
 
+  useEffect(() => {
+    if (step !== 'camera' || !cameraReady) return;
+    
+    // Check if FaceDetector API is available
+    if (typeof window === 'undefined' || !('FaceDetector' in window)) {
+      setFaceDetectorSupported(false);
+      return;
+    }
+    
+    let animId: number;
+    const detector = new (window as any).FaceDetector({ fastMode: true });
+    
+    // Auto fallback to manual capture after 8 seconds if waiting_face
+    const fallbackTimer = setTimeout(() => {
+      if (livenessState === 'waiting_face') {
+        setFaceDetectorSupported(false);
+      }
+    }, 8000);
+
+    const detect = async () => {
+      if (!videoRef.current || step !== 'camera') return;
+      try {
+        const faces = await detector.detect(videoRef.current);
+        if (faces.length > 0) {
+          const face = faces[0];
+          const landmarks = face.landmarks || [];
+          const eyes = landmarks.filter((l: any) => l.type === 'eye');
+          
+          if (eyes.length >= 2) {
+            if (livenessState === 'waiting_face') {
+              setLivenessState('waiting_blink');
+            }
+            
+            // Detect blink by checking if eyes are present but very small bounding box
+            // FaceDetector landmarks give eye positions; a blink is detected when
+            // the eye landmark positions change significantly (eyes close)
+            const eyeSize = Math.abs(eyes[0].locations[0].y - (face.boundingBox.y + face.boundingBox.height / 2));
+            const isEyeOpen = eyeSize > 5;
+            
+            if (blinkTracker.current.lastEyeOpen && !isEyeOpen) {
+              // Eyes just closed
+            } else if (!blinkTracker.current.lastEyeOpen && isEyeOpen) {
+              // Eyes just opened = blink completed!
+              setLivenessState('blink_detected');
+              // Auto-capture after blink
+              setTimeout(() => captureAndVerify(), 300);
+              return; // Stop detection loop
+            }
+            blinkTracker.current.lastEyeOpen = isEyeOpen;
+          }
+        } else {
+          if (livenessState !== 'waiting_face') {
+            setLivenessState('waiting_face');
+          }
+        }
+      } catch (e) {
+        // FaceDetector failed, fall back
+        setFaceDetectorSupported(false);
+        return;
+      }
+      animId = requestAnimationFrame(detect);
+    };
+    
+    detect();
+    return () => {
+      cancelAnimationFrame(animId);
+      clearTimeout(fallbackTimer);
+    };
+  }, [step, cameraReady, livenessState]);
+
   useEffect(() => { return () => stopCamera(); }, []);
 
   const phaseLabel = phase === 'phase1' ? 'Phase 1 — Check In' : 'Phase 2 — Check Out';
@@ -194,37 +276,53 @@ export default function VerifyPage() {
     </div>
   );
 
-  if (step === 'camera') return (
-    <div className="h-screen w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto">
-      <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
-      <canvas ref={canvasRef} className="hidden" />
-      <div className="absolute inset-0 z-10 flex flex-col">
-        <div className="flex items-center justify-between p-4">
-          <button onClick={() => { stopCamera(); router.back(); }}
-            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-95">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h2 className="text-white font-bold drop-shadow-md">Verify Identity</h2>
-          <div className="bg-secondary-container/90 backdrop-blur-sm px-3 h-8 rounded-full flex items-center gap-1">
-            <span className="material-symbols-outlined text-on-secondary-container text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
-            <span className="text-on-secondary-container text-xs font-medium">{gpsDistance}m</span>
+  if (step === 'camera') {
+    const ovalBorderColor = livenessState === 'blink_detected' 
+      ? 'border-green-400' 
+      : livenessState === 'waiting_blink' 
+        ? 'border-blue-400 animate-pulse' 
+        : 'border-white/80';
+
+    return (
+      <div className="h-screen w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto">
+        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
+        <canvas ref={canvasRef} className="hidden" />
+        <div className="absolute inset-0 z-10 flex flex-col">
+          <div className="flex items-center justify-between p-4">
+            <button onClick={() => { stopCamera(); router.back(); }}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-95">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2 className="text-white font-bold drop-shadow-md">Verify Identity</h2>
+            <div className="bg-secondary-container/90 backdrop-blur-sm px-3 h-8 rounded-full flex items-center gap-1">
+              <span className="material-symbols-outlined text-on-secondary-container text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+              <span className="text-on-secondary-container text-xs font-medium">{gpsDistance}m</span>
+            </div>
           </div>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-64 h-80 rounded-[50%] border-4 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]" />
-          <p className="text-white/80 text-sm mt-6 drop-shadow-md">Center your face in the oval</p>
-          <p className="text-white/50 text-xs mt-1">{phaseLabel}</p>
-        </div>
-        <div className="flex justify-center pb-12">
-          <button onClick={captureAndVerify}
-            className="w-20 h-20 rounded-full bg-white shadow-lg active:scale-95 flex items-center justify-center relative">
-            <div className="absolute inset-2 rounded-full border-4 border-surface-container" />
-            <span className="material-symbols-outlined text-primary text-3xl" style={{fontVariationSettings:"'FILL' 1"}}>photo_camera</span>
-          </button>
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className={`w-72 h-[22rem] rounded-[50%] border-4 ${ovalBorderColor} shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] transition-colors duration-300`} />
+            <p className="text-white/80 text-sm mt-6 drop-shadow-md">
+              {livenessState === 'blink_detected' ? '✓ Blink detected! Capturing...' 
+                : livenessState === 'waiting_blink' ? 'Face detected — now blink'
+                : 'Position your face in the oval'}
+            </p>
+            <p className="text-white/50 text-xs mt-1">{phaseLabel}</p>
+          </div>
+          {!faceDetectorSupported && cameraReady ? (
+            <div className="flex justify-center pb-12">
+              <button onClick={captureAndVerify}
+                className="w-20 h-20 rounded-full bg-white shadow-lg active:scale-95 flex items-center justify-center relative">
+                <div className="absolute inset-2 rounded-full border-4 border-surface-container" />
+                <span className="material-symbols-outlined text-primary text-3xl" style={{fontVariationSettings:"'FILL' 1"}}>photo_camera</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-center pb-12 min-h-[80px]" />
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (step === 'processing') return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">

@@ -16,7 +16,7 @@ MATCH_THRESHOLD = float(os.getenv("MATCH_THRESHOLD", "0.65"))
 ENROLLMENT_SAMPLES = int(os.getenv("ENROLLMENT_SAMPLES", "1"))
 
 MODEL_NAME = "Facenet512"
-DETECTOR = "opencv"
+DETECTOR = "skip"
 
 
 def base64_to_image(base64_str: str) -> np.ndarray:

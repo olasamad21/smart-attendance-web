@@ -13,8 +13,11 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir opencv-python-headless==4.9.0.80
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Force headless OpenCV AFTER deepface installs the GUI version
+RUN pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true
+RUN pip install --no-cache-dir opencv-python-headless==4.9.0.80
 
 COPY . .
 
@@ -22,4 +25,4 @@ RUN mkdir -p /data
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
