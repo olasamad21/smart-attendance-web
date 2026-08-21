@@ -220,8 +220,8 @@ export default function FaceEnrollPage() {
             <div className="w-10" />
           </div>
 
-          {/* Face guide */}
-          <div className="flex-1 flex flex-col items-center justify-center">
+          {/* Face guide — shifted up to make room for button */}
+          <div className="flex-1 flex flex-col items-center justify-center -mt-16">
             {state === 'camera' ? (
               <div className="w-72 h-[22rem] rounded-[50%] border-4 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] flex items-center justify-center">
                 <span className="material-symbols-outlined text-white/30 text-6xl" style={{fontVariationSettings:"'FILL' 1"}}>face</span>
@@ -251,7 +251,7 @@ export default function FaceEnrollPage() {
           </div>
 
           {/* Capture button */}
-          <div className="flex justify-center pb-12 h-24">
+          <div className="flex justify-center pb-24 h-28">
             {state === 'camera' && cameraReady && (
               <button onClick={startScanning}
                 className="h-14 px-8 rounded-full bg-white shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
