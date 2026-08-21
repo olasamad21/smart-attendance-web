@@ -82,6 +82,9 @@ export default function VerifyPage() {
         videoRef.current.onloadedmetadata = () => {
           setCameraReady(true);
         };
+        if (videoRef.current.readyState >= 1) {
+          setCameraReady(true);
+        }
         videoRef.current.play().catch(e => console.log('play interrupted', e));
       }
     } catch {
@@ -284,7 +287,7 @@ export default function VerifyPage() {
         : 'border-white/80';
 
     return (
-      <div className="h-screen w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto">
+      <div className="w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto" style={{ height: 'calc(100dvh - 64px)' }}>
         <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
         <canvas ref={canvasRef} className="hidden" />
         <div className="absolute inset-0 z-10 flex flex-col">
@@ -299,9 +302,9 @@ export default function VerifyPage() {
               <span className="text-on-secondary-container text-xs font-medium">{gpsDistance}m</span>
             </div>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center -mt-16">
+          <div className="flex-1 flex flex-col items-center justify-center">
             <div className={`w-72 h-[22rem] rounded-[50%] border-4 ${ovalBorderColor} shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] transition-colors duration-300`} />
-            <p className="text-white/80 text-sm mt-6 drop-shadow-md">
+            <p className="text-white/80 text-sm mt-4 drop-shadow-md">
               {livenessState === 'blink_detected' ? '✓ Blink detected! Capturing...' 
                 : livenessState === 'waiting_blink' ? 'Face detected — now blink'
                 : 'Position your face in the oval'}
@@ -309,7 +312,7 @@ export default function VerifyPage() {
             <p className="text-white/50 text-xs mt-1">{phaseLabel}</p>
           </div>
           {!faceDetectorSupported && cameraReady ? (
-            <div className="flex justify-center pb-24">
+            <div className="flex justify-center pb-6">
               <button onClick={captureAndVerify}
                 className="w-20 h-20 rounded-full bg-white shadow-lg active:scale-95 flex items-center justify-center relative">
                 <div className="absolute inset-2 rounded-full border-4 border-surface-container" />
@@ -317,7 +320,7 @@ export default function VerifyPage() {
               </button>
             </div>
           ) : (
-            <div className="flex justify-center pb-24 min-h-[80px]" />
+            <div className="flex justify-center pb-6 min-h-[80px]" />
           )}
         </div>
       </div>
