@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Force headless OpenCV AFTER deepface installs the GUI version
 RUN pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true
-RUN pip install --no-cache-dir opencv-python-headless==4.9.0.80
+RUN pip install --no-cache-dir "opencv-python-headless>=4.10.0"
 
 COPY . .
 
