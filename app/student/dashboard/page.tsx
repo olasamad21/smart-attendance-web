@@ -79,7 +79,7 @@ export default function StudentDashboard() {
       if (!hasP1) {
         return { text: `Check In Now (${countdown})`, icon: 'how_to_reg', disabled: false, variant: 'active' };
       } else {
-        return { text: `✓ Checked In · Phase 2 in ${countdown}`, icon: 'check_circle', disabled: true, variant: 'completed' };
+        return { text: `✓ Checked In · Phase 1 ends in ${countdown}`, icon: 'check_circle', disabled: true, variant: 'completed' };
       }
     }
     
