@@ -51,6 +51,7 @@ export interface Session {
   classroomRadius: number;
   phase1Duration: number;
   phase2Duration: number;
+  totalDuration?: number;
   status: 'phase1_open' | 'waiting' | 'phase2_open' | 'ended';
   phase1Start: any;
   phase1End: any;

@@ -111,7 +111,7 @@ export default function LoginPage() {
             </div>
             {errors.password && <p className="text-label-md text-error">{errors.password.message}</p>}
             <div className="flex justify-end mt-1">
-              <a href="#" className="text-label-md text-primary hover:underline">Forgot password?</a>
+              <Link href="/forgot-password" className="text-label-md text-primary hover:underline">Forgot password?</Link>
             </div>
           </div>
 
