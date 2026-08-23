@@ -117,6 +117,9 @@ export default function StatisticsPage() {
 
   // At-risk students (bottom 5 by attendance %)
   const atRisk = [...studentStats].sort((a, b) => a.percentage - b.percentage).slice(0, 5);
+  
+  // Top students (top 5 by attendance %)
+  const topStudents = [...studentStats].sort((a, b) => b.percentage - a.percentage).slice(0, 5);
 
   // --- Chart Data ---
   const sessionLabels = sessions.map(s => {
@@ -252,6 +255,40 @@ export default function StatisticsPage() {
                 <Doughnut data={phaseBreakdownData} options={phaseBreakdownOptions} />
               </div>
             </div>
+
+            {/* Top Students */}
+            {topStudents.length > 0 && (
+              <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden mb-6">
+                <div className="flex items-center justify-between p-4 border-b border-surface-variant">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-lg" style={{fontVariationSettings:"'FILL' 1"}}>star</span>
+                    <h3 className="text-sm font-bold text-on-surface">Top Students</h3>
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant">Highest attendance</span>
+                </div>
+                <div className="divide-y divide-surface-variant/50">
+                  {topStudents.map((s, i) => (
+                    <div key={`top-${s.userId}`} className={`flex items-center gap-3 px-4 py-3 ${i === 0 ? 'bg-primary/5' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        i === 0 ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container text-on-surface-variant'
+                      }`}>
+                        {i === 0 ? <span className="material-symbols-outlined text-[16px]" style={{fontVariationSettings:"'FILL' 1"}}>emoji_events</span> : i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-on-surface truncate">{s.name}</p>
+                        <p className="text-[10px] text-on-surface-variant truncate">{s.matricNumber || '—'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-primary">
+                          {s.percentage.toFixed(0)}%
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant">{s.attended}/{totalSessions}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* At-Risk Students */}
             {atRisk.length > 0 && (
