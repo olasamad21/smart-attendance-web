@@ -232,7 +232,7 @@ export default function StatisticsPage() {
         {totalSessions === 0 ? (
           <EmptyState
             icon="bar_chart"
-            title="No Data Yet"
+            title="No data yet"
             description="Statistics will appear here after you complete your first session."
           />
         ) : (
