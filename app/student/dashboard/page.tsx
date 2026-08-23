@@ -176,13 +176,31 @@ export default function StudentDashboard() {
               <div className="w-2 h-2 bg-secondary-fixed rounded-full animate-pulse" />
               <span className="text-xs font-bold text-on-primary-container uppercase tracking-wider">Live Session</span>
             </div>
-            {activeCourses.map(course => (
+            {activeCourses.map(course => {
+              const session = activeSessions[course.courseId];
+              return (
               <div key={course.courseId} className="relative z-10 mb-4 last:mb-0">
                 <p className="text-lg font-bold text-on-primary-container">{course.courseTitle}</p>
-                <p className="text-xs text-on-primary-container/70 mb-3">{course.courseCode}</p>
+                <p className="text-xs text-on-primary-container/70">{course.courseCode}</p>
+                {session && (
+                  <div className="flex items-center gap-3 mt-1 mb-3">
+                    <span className="text-[10px] text-on-primary-container/60 flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-xs">location_on</span>
+                      {session.classroomName}
+                    </span>
+                    {session.totalDuration && (
+                      <span className="text-[10px] text-on-primary-container/60 flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-xs">schedule</span>
+                        {session.totalDuration} min class
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!session && <div className="mb-3" />}
                 {renderSmartButton(course, true)}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
