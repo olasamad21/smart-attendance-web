@@ -91,3 +91,19 @@ After deploying the Dockerized backend, the API was returning a `502 Bad Gateway
 * **The Cause:** Railway's edge proxy (Hikari) was failing to route traffic to the Uvicorn server. Our Dockerfile used `CMD ["sh", "-c", "..."]` to evaluate the dynamic port, which caused Uvicorn to spawn as a child process (PID 2) on port 8080. Railway's port-detection algorithm failed to properly map the public URL to this child process's port.
 * **The Fix:** We explicitly added `PORT=8000` to the Railway Environment Variables dashboard.
 * **Decision:** By strictly defining the `PORT` variable at the platform level, we forced both the Uvicorn server and the Railway load balancer to perfectly synchronize on port 8000, completely bypassing Railway's automatic port detection quirks. This fully resolved the network errors and successfully connected the Vercel frontend to the Python backend.
+
+## 8. UX Refinements & Standardization
+We implemented several quality-of-life and visual consistency improvements across the application.
+
+* **Duration Input & Formatting:**
+  * **Action:** Replaced the single "Total Class Duration" minutes input in `app/lecturer/sessions/start/page.tsx` with dual Hours/Minutes inputs. Updated preset duration pill labels across Start Session, Create Course, and Course Settings to use a compact `Xh Ym` format (e.g., "1h 30m" instead of "90 min").
+  * **Decision:** Improves lecturer awareness and reduces mental math for long sessions. The underlying state and Firebase payload remain strictly in total minutes so existing session countdown logic is completely unaffected.
+
+* **Global Empty State Standardization:**
+  * **Action:** Built a reusable `components/ui/EmptyState.tsx` following the Material Design 3 / Kinetic Clarity system.
+  * **Action:** Audited 10+ lists/tables across the application (courses, classrooms, reports, history, student dashboard) and replaced all ad-hoc "no data" divs with the new `EmptyState` component.
+  * **Decision:** Eliminates visual inconsistencies, standardizes icon/typography weight, and gives the application a highly polished, production-ready feel.
+
+* **"Top Students" Leaderboard:**
+  * **Action:** Added a leaderboard above the "At-Risk Students" section in `app/lecturer/courses/[courseId]/statistics/page.tsx`.
+  * **Decision:** Displays the top 5 students by attendance percentage. Reused the pre-computed `studentStats` array (sorting descending instead of ascending) to avoid redundant data fetching or processing. Added subtle visual highlighting to the #1 ranked student for gamification.
