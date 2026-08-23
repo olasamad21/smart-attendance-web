@@ -6,8 +6,9 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { getCourseById, getEnrolledStudents } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
 import { getSessionAttendance, getCourseAttendanceOverview } from '@/lib/firebase/attendance.service';
-import { downloadCSV } from '@/lib/utils/csv.utils';
-import { downloadPDF } from '@/lib/utils/pdf.utils';
+import { generateSemesterCSV, generateSessionCSV } from '@/lib/utils/csv.utils';
+import { generateSemesterPDF, generateSessionPDF } from '@/lib/utils/pdf.utils';
+import EmptyState from '@/components/ui/EmptyState';
 import { Course, Session, AttendanceRecord, UserProfile } from '@/types';
 
 export default function ReportsPage() {
@@ -254,10 +255,11 @@ export default function ReportsPage() {
           <h2 className="font-bold text-on-surface mb-4">Individual Sessions</h2>
 
           {sessions.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow">
-              <span className="material-symbols-outlined text-outline text-5xl mb-3 block">assignment</span>
-              <p className="text-sm text-on-surface-variant">No sessions yet</p>
-            </div>
+            <EmptyState
+              icon="assignment"
+              title="No sessions yet"
+              description="Start and complete sessions to view their attendance reports."
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {sessions.map(s => (

@@ -7,6 +7,7 @@ import { getActiveSessionWithSync, getStudentSessionAttendance } from '@/lib/fir
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import { checkFaceEnrolled } from '@/lib/api/face.api';
 import TopAppBar from '@/components/layout/TopAppBar';
+import EmptyState from '@/components/ui/EmptyState';
 import { Course, Session, AttendanceRecord } from '@/types';
 
 function getGreeting() {
@@ -229,11 +230,16 @@ export default function StudentDashboard() {
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : courses.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-2xl p-8 card-shadow text-center">
-              <span className="material-symbols-outlined text-outline text-4xl mb-2 block">school</span>
-              <p className="text-sm text-on-surface-variant">No courses enrolled yet</p>
-              <a href="/student/courses" className="text-sm text-primary font-semibold mt-2 inline-block">Join a course →</a>
-            </div>
+            <EmptyState
+              icon="school"
+              title="No courses yet"
+              description="You haven't enrolled in any courses."
+              action={
+                <a href="/student/courses" className="bg-primary-container text-on-primary-container text-sm font-bold px-6 h-12 rounded-full active:scale-95 transition-all inline-flex items-center justify-center mt-2">
+                  Join a course
+                </a>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {courses.map(course => {

@@ -1,6 +1,7 @@
 import { getCourseById, getEnrolledStudents } from "@/lib/firebase/courses.service";
 import { getSessionsForCourse } from "@/lib/firebase/sessions.service";
 import { getCourseAttendanceOverview } from "@/lib/firebase/attendance.service";
+import EmptyState from "@/components/ui/EmptyState";
 import TopAppBar from "@/components/layout/TopAppBar";
 import { Course, UserProfile, Session, AttendanceRecord } from "@/types";
 
@@ -136,11 +137,12 @@ export default async function EnrolledStudentsPage({
                 })}
                 {studentsWithAttendance.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="p-8 text-center text-on-surface-variant"
-                    >
-                      No students enrolled yet.
+                    <td colSpan={5} className="py-8">
+                      <EmptyState
+                        icon="group_off"
+                        title="No students enrolled"
+                        description="Students need to enroll in this course using the enrollment code before they appear here."
+                      />
                     </td>
                   </tr>
                 )}

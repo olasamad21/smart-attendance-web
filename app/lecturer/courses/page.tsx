@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { getLecturerCourses, deleteCourse, createCourse } from '@/lib/firebase/courses.service';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course } from '@/types';
+import EmptyState from '@/components/ui/EmptyState';
 
 export default function LecturerCoursesPage() {
   const { user } = useAuthStore();
@@ -57,15 +58,17 @@ export default function LecturerCoursesPage() {
         {isLoading ? (
           <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : courses.length === 0 ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow">
-            <span className="material-symbols-outlined text-outline text-5xl mb-3 block">menu_book</span>
-            <p className="text-base font-semibold text-on-surface">No courses yet</p>
-            <p className="text-sm text-on-surface-variant mt-1 mb-4">Create your first course to start taking attendance</p>
-            <button onClick={() => setShowModal(true)}
-              className="bg-primary-container text-on-primary-container text-sm font-semibold px-6 h-10 rounded-full active:scale-95 transition-all">
-              Create Course
-            </button>
-          </div>
+          <EmptyState
+            icon="menu_book"
+            title="No courses yet"
+            description="Create your first course to start taking attendance."
+            action={
+              <button onClick={() => setShowModal(true)}
+                className="bg-primary-container text-on-primary-container text-sm font-bold px-6 h-12 rounded-full active:scale-95 transition-all">
+                Create First Course
+              </button>
+            }
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {courses.map((course) => (

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth.store';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { getClassrooms, createClassroom, deleteClassroom } from '@/lib/firebase/classrooms.service';
 import { Classroom } from '@/types';
+import EmptyState from '@/components/ui/EmptyState';
 import { getCurrentPosition } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
 
@@ -88,15 +89,17 @@ export default function ClassroomsPage() {
         {isLoading ? (
           <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : classrooms.length === 0 ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow">
-            <span className="material-symbols-outlined text-outline text-5xl mb-3 block">location_on</span>
-            <p className="text-base font-semibold text-on-surface">No classrooms yet</p>
-            <p className="text-sm text-on-surface-variant mt-1 mb-4">Add classrooms to enable GPS verification for attendance</p>
-            <button onClick={() => setShowModal(true)}
-              className="bg-primary-container text-on-primary-container text-sm font-semibold px-6 h-10 rounded-full active:scale-95">
-              Add First Classroom
-            </button>
-          </div>
+          <EmptyState
+            icon="location_on"
+            title="No classrooms yet"
+            description="Add classrooms to enable GPS verification for attendance."
+            action={
+              <button onClick={() => setShowModal(true)}
+                className="bg-primary-container text-on-primary-container text-sm font-bold px-6 h-12 rounded-full active:scale-95 transition-all">
+                Add First Classroom
+              </button>
+            }
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {classrooms.map(room => (

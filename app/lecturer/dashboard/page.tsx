@@ -6,6 +6,7 @@ import { getLecturerCourses } from '@/lib/firebase/courses.service';
 import { getActiveSessionWithSync } from '@/lib/firebase/sessions.service';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session } from '@/types';
+import EmptyState from '@/components/ui/EmptyState';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -116,11 +117,11 @@ export default function LecturerDashboard() {
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : courses.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-[16px] p-8 card-shadow text-center">
-              <span className="material-symbols-outlined text-outline text-5xl mb-3 block">school</span>
-              <p className="text-body-lg font-medium text-on-surface">No courses yet</p>
-              <p className="text-body-md text-on-surface-variant mt-1">Go to Courses to create your first course</p>
-            </div>
+            <EmptyState
+              icon="school"
+              title="No courses yet"
+              description="Go to Courses to create your first course and start managing sessions."
+            />
           ) : (
             <div className="flex flex-col gap-element-gap">
               {courses.slice(0, 4).map((course) => (
