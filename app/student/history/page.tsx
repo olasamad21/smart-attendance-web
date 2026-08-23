@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { useAuthStore } from '@/store/auth.store';
 import { getStudentAttendanceHistory } from '@/lib/firebase/attendance.service';
+import EmptyState from '@/components/ui/EmptyState';
 import { getStudentCourses } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
 import { toDate } from '@/lib/utils/session.utils';
@@ -93,11 +94,11 @@ export default function AttendanceHistoryPage() {
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
           </div>
         ) : filteredRecords.length === 0 ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow mt-4">
-            <span className="material-symbols-outlined text-outline text-5xl mb-3 block">fact_check</span>
-            <p className="text-base font-semibold text-on-surface">No attendance records yet</p>
-            <p className="text-sm text-on-surface-variant mt-1">Your attendance history will appear here after you verify attendance</p>
-          </div>
+          <EmptyState
+            icon="fact_check"
+            title="No records yet"
+            description="Your attendance history will appear here after you check into your first session."
+          />
         ) : (
           <div className="flex flex-col gap-4 mt-4">
             {filteredRecords.map((record) => {

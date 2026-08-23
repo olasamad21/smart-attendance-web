@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { getStudentAttendanceHistory } from '@/lib/firebase/attendance.service';
 import { getCourseById } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
+import EmptyState from '@/components/ui/EmptyState';
 import { toDate } from '@/lib/utils/session.utils';
 import { AttendanceRecord, Course, Session } from '@/types';
 
@@ -112,10 +113,11 @@ export default function CourseHistoryPage() {
             </div>
 
             {timeline.length === 0 ? (
-               <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow mt-4">
-                 <p className="text-base font-semibold text-on-surface">No sessions yet</p>
-                 <p className="text-sm text-on-surface-variant mt-1">This course does not have any sessions.</p>
-               </div>
+              <EmptyState
+                icon="history"
+                title="No sessions yet"
+                description="Your attendance timeline will appear here once sessions begin."
+              />
             ) : (
               <div className="flex flex-col gap-4">
                 {timeline.map((item) => {

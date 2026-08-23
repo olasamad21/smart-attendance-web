@@ -7,8 +7,10 @@ import { subscribeToSessionAttendance, getSessionAttendance, awardFullMarksAndEn
 import { getEnrolledStudents } from '@/lib/firebase/courses.service';
 import { Session, AttendanceRecord, UserProfile } from '@/types';
 import { formatCountdown, getPhaseInfo } from '@/lib/utils/session.utils';
-import { downloadCSV } from '@/lib/utils/csv.utils';
-import { downloadPDF } from '@/lib/utils/pdf.utils';
+import { generateSessionCSV } from '@/lib/utils/csv.utils';
+import { generateSessionPDF } from '@/lib/utils/pdf.utils';
+import { calculateGpsDistance } from '@/lib/utils/gps.utils';
+import EmptyState from '@/components/ui/EmptyState';
 
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -285,10 +287,11 @@ export default function LiveSessionPage() {
                 <span className="bg-primary text-on-primary text-xs font-bold px-2 py-0.5 rounded-full">{attendees.length}</span>
               </div>
               {attendees.length === 0 ? (
-                <div className="p-8 text-center">
-                  <span className="material-symbols-outlined text-outline text-3xl mb-2 block">groups</span>
-                  <p className="text-sm text-on-surface-variant">Waiting for students to verify...</p>
-                </div>
+                <EmptyState
+                  icon="groups"
+                  title="No check-ins yet"
+                  description="Waiting for students to verify attendance."
+                />
               ) : (
                 <div className="divide-y divide-surface-variant max-h-80 overflow-y-auto">
                   {attendees.map((a, i) => (
@@ -400,10 +403,11 @@ export default function LiveSessionPage() {
               )}
 
               {attended.length === 0 && absent.length === 0 && (
-                <div className="p-8 text-center">
-                  <span className="material-symbols-outlined text-outline text-3xl mb-2 block">groups</span>
-                  <p className="text-sm text-on-surface-variant">No students enrolled or attended</p>
-                </div>
+                <EmptyState
+                  icon="groups"
+                  title="No records found"
+                  description="No students were enrolled or verified during this session."
+                />
               )}
             </div>
           </>

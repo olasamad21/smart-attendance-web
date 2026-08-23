@@ -20,6 +20,7 @@ import {
   Filler
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import EmptyState from '@/components/ui/EmptyState';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -229,11 +230,11 @@ export default function StatisticsPage() {
         </div>
 
         {totalSessions === 0 ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow">
-            <span className="material-symbols-outlined text-outline text-5xl mb-3 block">bar_chart</span>
-            <p className="text-base font-semibold text-on-surface">No Data Yet</p>
-            <p className="text-sm text-on-surface-variant mt-1">Statistics will appear after you complete your first session</p>
-          </div>
+          <EmptyState
+            icon="bar_chart"
+            title="No Data Yet"
+            description="Statistics will appear here after you complete your first session."
+          />
         ) : (
           <>
             {/* Attendance Trend Chart */}

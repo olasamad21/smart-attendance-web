@@ -8,6 +8,7 @@ import { getClassrooms, createClassroom } from '@/lib/firebase/classrooms.servic
 import { startSession } from '@/lib/firebase/sessions.service';
 import { getCurrentPosition } from '@/lib/utils/gps.utils';
 import { Course, Classroom } from '@/types';
+import EmptyState from '@/components/ui/EmptyState';
 import dynamic from 'next/dynamic';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), {
@@ -209,14 +210,19 @@ export default function StartSessionPage() {
           </div>
 
           {classrooms.length === 0 && !selectedClassroom ? (
-            <div className="bg-surface-container-lowest rounded-2xl p-6 text-center card-shadow">
-              <span className="material-symbols-outlined text-outline text-3xl mb-2 block">location_off</span>
-              <p className="text-sm text-on-surface-variant mb-3">No classrooms set up yet</p>
-              <button onClick={() => { setShowAddClassroom(true); }}
-                className="text-sm text-primary font-semibold flex items-center gap-1 mx-auto active:scale-95">
-                <span className="material-symbols-outlined text-lg">add</span>
-                Add your first classroom
-              </button>
+            <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/30">
+              <EmptyState
+                icon="location_off"
+                title="No classrooms"
+                description="Add a classroom to start."
+                action={
+                  <button onClick={() => { setShowAddClassroom(true); }}
+                    className="text-sm text-primary font-semibold flex items-center gap-1 mx-auto active:scale-95">
+                    <span className="material-symbols-outlined text-lg">add</span>
+                    Add Classroom
+                  </button>
+                }
+              />
             </div>
           ) : (
             <button

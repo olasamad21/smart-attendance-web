@@ -7,6 +7,7 @@ import { getActiveSessionWithSync, getStudentSessionAttendance } from '@/lib/fir
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session, AttendanceRecord } from '@/types';
+import EmptyState from '@/components/ui/EmptyState';
 
 export default function StudentCoursesPage() {
   const router = useRouter();
@@ -98,15 +99,17 @@ export default function StudentCoursesPage() {
           isLoading ? (
             <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
           ) : courses.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-2xl p-12 text-center card-shadow">
-              <span className="material-symbols-outlined text-outline text-5xl mb-3 block">school</span>
-              <p className="text-base font-semibold text-on-surface">No courses enrolled yet</p>
-              <p className="text-sm text-on-surface-variant mt-1 mb-4">Join a course using the code from your lecturer</p>
-              <button onClick={() => setTab('join')}
-                className="bg-primary-container text-on-primary-container text-sm font-semibold px-6 h-10 rounded-full active:scale-95 transition-all">
-                Join a Course
-              </button>
-            </div>
+            <EmptyState
+              icon="school"
+              title="No courses enrolled yet"
+              description="Join a course using the enrollment code from your lecturer."
+              action={
+                <button onClick={() => setTab('join')}
+                  className="bg-primary-container text-on-primary-container text-sm font-bold px-6 h-12 rounded-full active:scale-95 transition-all">
+                  Join a Course
+                </button>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {courses.map(course => {
