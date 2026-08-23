@@ -131,7 +131,7 @@ export default function LecturerCoursesPage() {
                     {durations.map(d => (
                       <button key={d} onClick={() => setForm({...form, defaultDuration: d})}
                         className={`px-4 h-9 rounded-full text-xs font-semibold border transition-all active:scale-95 ${form.defaultDuration === d ? 'bg-primary-container text-on-primary-container border-primary-container' : 'bg-surface-container-low text-on-surface-variant border-outline-variant'}`}>
-                        {d} min
+                        {d < 60 ? `${d}m` : (d % 60 === 0 ? `${Math.floor(d/60)}h` : `${Math.floor(d/60)}h ${d%60}m`)}
                       </button>
                     ))}
                   </div>

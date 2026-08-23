@@ -26,7 +26,8 @@ export default function StartSessionPage() {
   const [totalDuration, setTotalDuration] = useState(60);
   const [phase1Duration, setPhase1Duration] = useState(15);
   const [phase2Duration, setPhase2Duration] = useState(15);
-  const [customTotal, setCustomTotal] = useState('');
+  const [customTotalH, setCustomTotalH] = useState('');
+  const [customTotalM, setCustomTotalM] = useState('');
   const [customP1, setCustomP1] = useState('');
   const [customP2, setCustomP2] = useState('');
   const [starting, setStarting] = useState(false);
@@ -92,7 +93,7 @@ export default function StartSessionPage() {
     finally { setStarting(false); }
   };
 
-  // Duration pill select with custom input support
+  // Duration pill select with custom input support for phase durations
   const handleDurationSelect = (
     value: number,
     setter: (v: number) => void,
@@ -112,6 +113,36 @@ export default function StartSessionPage() {
     if (!isNaN(num) && num > 0) {
       setter(num);
     }
+  };
+
+  // Special handlers for Total Duration (h/m format)
+  const handleTotalPresetSelect = (val: number) => {
+    setTotalDuration(val);
+    setCustomTotalH('');
+    setCustomTotalM('');
+  };
+
+  const handleCustomTotalChange = (type: 'h' | 'm', val: string) => {
+    if (type === 'h') setCustomTotalH(val);
+    if (type === 'm') setCustomTotalM(val);
+    
+    const hStr = type === 'h' ? val : customTotalH;
+    const mStr = type === 'm' ? val : customTotalM;
+    const h = parseInt(hStr) || 0;
+    const m = parseInt(mStr) || 0;
+    
+    if (h > 0 || m > 0) {
+      setTotalDuration((h * 60) + m);
+    } else {
+      setTotalDuration(0);
+    }
+  };
+
+  const formatDuration = (mins: number) => {
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
   };
 
   // Classroom creation
@@ -222,33 +253,41 @@ export default function StartSessionPage() {
           <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Total Class Duration</h3>
           <div className="flex gap-2 flex-wrap items-center">
             {totalPresets.map(d => (
-              <button key={`total-${d}`} onClick={() => handleDurationSelect(d, setTotalDuration, setCustomTotal)}
+              <button key={`total-${d}`} onClick={() => handleTotalPresetSelect(d)}
                 className={`px-4 h-9 rounded-full text-xs font-semibold border transition-all active:scale-95 ${
-                  totalDuration === d && !customTotal
+                  totalDuration === d && !customTotalH && !customTotalM
                     ? 'bg-primary-container text-on-primary-container border-primary-container'
                     : 'bg-surface-container-low text-on-surface-variant border-outline-variant'
                 }`}>
-                {d} min
+                {formatDuration(d)}
               </button>
             ))}
-            <div className="relative">
+            
+            {/* Custom Hours/Mins Input */}
+            <div className={`flex items-center gap-1 border rounded-full px-3 h-9 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all ${
+              (customTotalH || customTotalM)
+                ? 'bg-primary-container text-on-primary-container border-primary-container'
+                : 'bg-surface-container-low text-on-surface-variant border-outline-variant'
+            }`}>
               <input
-                type="number"
-                min="1"
-                placeholder="Custom"
-                value={customTotal}
-                onChange={(e) => handleCustomDuration(e.target.value, setTotalDuration, setCustomTotal)}
-                className={`w-20 h-9 rounded-full text-xs font-semibold text-center border transition-all focus:outline-none focus:ring-1 focus:ring-primary ${
-                  customTotal
-                    ? 'bg-primary-container text-on-primary-container border-primary-container'
-                    : 'bg-surface-container-low text-on-surface-variant border-outline-variant'
-                }`}
+                type="number" min="0" placeholder="0"
+                value={customTotalH}
+                onChange={e => handleCustomTotalChange('h', e.target.value)}
+                className="w-6 text-xs font-semibold text-center bg-transparent focus:outline-none placeholder:text-current/50"
               />
+              <span className="text-xs font-medium opacity-70">h</span>
+              <input
+                type="number" min="0" placeholder="0"
+                value={customTotalM}
+                onChange={e => handleCustomTotalChange('m', e.target.value)}
+                className="w-6 text-xs font-semibold text-center bg-transparent focus:outline-none ml-1 placeholder:text-current/50"
+              />
+              <span className="text-xs font-medium opacity-70">m</span>
             </div>
           </div>
           <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">schedule</span>
-            {totalDuration} minutes total
+            {formatDuration(totalDuration)} total
           </p>
         </section>
 
