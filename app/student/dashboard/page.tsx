@@ -155,8 +155,8 @@ export default function StudentDashboard() {
           <p className="text-sm text-on-surface-variant mt-1">Here is your verification summary for today.</p>
         </div>
 
-        {/* Face enrollment warning / status */}
-        {!faceEnrolled ? (
+        {/* Face enrollment warning */}
+        {!faceEnrolled && (
           <div className="bg-error-container/30 border border-error/20 rounded-2xl p-4 flex items-start gap-3">
             <span className="material-symbols-outlined text-error mt-0.5 text-xl" style={{fontVariationSettings:"'FILL' 1"}}>warning</span>
             <div className="flex-1">
@@ -164,15 +164,6 @@ export default function StudentDashboard() {
               <p className="text-xs text-on-surface-variant mt-0.5">You cannot mark attendance until you enroll your face.</p>
             </div>
             <a href="/student/enroll" className="text-xs font-bold text-primary whitespace-nowrap mt-0.5 shrink-0">Set up →</a>
-          </div>
-        ) : (
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 flex items-start gap-3 opacity-60">
-            <span className="material-symbols-outlined text-primary mt-0.5 text-xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-on-surface">Face verification complete</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">Your face is registered for attendance.</p>
-            </div>
-            <button onClick={() => alert('Face verification is already complete!')} className="text-xs font-bold text-on-surface-variant whitespace-nowrap mt-0.5 shrink-0">Complete</button>
           </div>
         )}
 

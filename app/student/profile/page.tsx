@@ -1,15 +1,27 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { logoutUser } from '@/lib/firebase/auth.service';
+import { checkFaceEnrolled } from '@/lib/api/face.api';
 import TopAppBar from '@/components/layout/TopAppBar';
 
 export default function StudentProfilePage() {
   const { user, clearUser } = useAuthStore();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [faceEnrolled, setFaceEnrolled] = useState(false);
+  const [checkingFace, setCheckingFace] = useState(true);
+
+  useEffect(() => {
+    if (user?.userId) {
+      checkFaceEnrolled(user.userId)
+        .then(res => setFaceEnrolled(res.enrolled))
+        .catch(() => setFaceEnrolled(false))
+        .finally(() => setCheckingFace(false));
+    }
+  }, [user?.userId]);
 
   const handleLogout = async () => {
     if (!confirm('Sign out of EduVerify?')) return;
@@ -23,7 +35,7 @@ export default function StudentProfilePage() {
 
   return (
     <div className="bg-background">
-      <TopAppBar title="Profile" />
+      <TopAppBar title="Profile" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 
         {/* Avatar */}
@@ -54,11 +66,19 @@ export default function StudentProfilePage() {
         </div>
         
         {/* Face Verification Setup */}
-        <Link href="/student/enroll"
-          className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95 transition-all flex items-center justify-center gap-2 mb-4 mt-4">
-          <span className="material-symbols-outlined text-xl">face</span>
-          Set up Face Verification
-        </Link>
+        {!checkingFace && faceEnrolled ? (
+          <button disabled onClick={() => alert('Face verification is already complete!')}
+            className="w-full h-12 bg-surface-container-low text-on-surface-variant rounded-full text-sm font-semibold flex items-center justify-center gap-2 mb-4 mt-4 opacity-70 cursor-not-allowed">
+            <span className="material-symbols-outlined text-xl text-primary" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+            Face Verification Complete
+          </button>
+        ) : (
+          <Link href="/student/enroll"
+            className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95 transition-all flex items-center justify-center gap-2 mb-4 mt-4">
+            <span className="material-symbols-outlined text-xl">face</span>
+            Set up Face Verification
+          </Link>
+        )}
 
         {/* Sign out */}
         <button onClick={handleLogout} disabled={loggingOut}
