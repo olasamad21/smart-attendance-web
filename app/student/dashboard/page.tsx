@@ -152,7 +152,6 @@ export default function StudentDashboard() {
         {/* Greeting */}
         <div>
           <h2 className="text-2xl font-bold text-on-surface">{getGreeting()}, {firstName}</h2>
-          <p className="text-sm text-on-surface-variant mt-1">Here is your verification summary for today.</p>
         </div>
 
         {/* Face enrollment warning */}
