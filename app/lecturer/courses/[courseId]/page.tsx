@@ -245,7 +245,7 @@ export default function CourseDetailPage() {
                           const attendedIds = new Set(records.filter(r => r.phase1Score > 0 || r.phase2Score > 0).map(r => r.studentId));
                           const attended = records.filter(r => attendedIds.has(r.studentId)).sort((a, b) => a.studentName.localeCompare(b.studentName));
                           const absent = enrolled.filter(st => !attendedIds.has(st.userId)).sort((a, b) => a.name.localeCompare(b.name));
-                          const headers = ['S/N', 'Student Name', 'Matric No', 'Phase 1', 'Phase 2', 'Total', 'Status'];
+                          const headers = ['S/N', 'Student Name', 'Matric No', 'Sign In', 'Sign Out', 'Total', 'Status'];
                           const rows: (string | number)[][] = [];
                           let sn = 1;
                           attended.forEach(a => rows.push([sn++, a.studentName, a.matricNumber, a.phase1Score, a.phase2Score, a.totalScore, 'Present']));
@@ -328,7 +328,7 @@ export default function CourseDetailPage() {
 
               <div className="grid grid-cols-2 gap-4 mb-2">
                 <div>
-                  <label className="block text-xs font-medium text-on-surface-variant mb-1">Phase 1 Marks</label>
+                  <label className="block text-xs font-medium text-on-surface-variant mb-1">Sign In Marks</label>
                   <input
                     type="number"
                     min="0"
@@ -340,7 +340,7 @@ export default function CourseDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-on-surface-variant mb-1">Phase 2 Marks</label>
+                  <label className="block text-xs font-medium text-on-surface-variant mb-1">Sign Out Marks</label>
                   <input
                     type="number"
                     min="0"

@@ -69,7 +69,7 @@ export default function StartSessionPage() {
   const handleStart = async () => {
     if (!selectedClassroom) { setError('Please select a classroom'); return; }
     if (waitingPeriod < 1) {
-      setError('Total class duration must be larger than Phase 1 + Phase 2 combined to allow a waiting period.');
+      setError('Total class duration must be larger than Sign In + Sign Out combined to allow a waiting period.');
       return;
     }
     if (!course || !user) return;
@@ -299,7 +299,7 @@ export default function StartSessionPage() {
 
         {/* ── Phase 1 Duration ── */}
         <section className="mb-6">
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Phase 1 — Check-in Window</h3>
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Sign In Window</h3>
           <div className="flex gap-2 flex-wrap items-center">
             {phasePresets.map(d => (
               <button key={`p1-${d}`} onClick={() => handleDurationSelect(d, setPhase1Duration, setCustomP1)}
@@ -330,7 +330,7 @@ export default function StartSessionPage() {
 
         {/* ── Phase 2 Duration ── */}
         <section className="mb-6">
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Phase 2 — Check-out Window</h3>
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">Sign Out Window</h3>
           <div className="flex gap-2 flex-wrap items-center">
             {phasePresets.map(d => (
               <button key={`p2-${d}`} onClick={() => handleDurationSelect(d, setPhase2Duration, setCustomP2)}

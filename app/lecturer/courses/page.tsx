@@ -141,13 +141,13 @@ export default function LecturerCoursesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant">Phase 1 Marks</label>
+                    <label className="text-xs font-semibold text-on-surface-variant">Sign In Marks</label>
                     <input type="number" min="0" step="0.5" value={form.phase1Marks} onChange={e => setForm({...form, phase1Marks: Number(e.target.value)})}
                       className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant">Phase 2 Marks</label>
+                    <label className="text-xs font-semibold text-on-surface-variant">Sign Out Marks</label>
                     <input type="number" min="0" step="0.5" value={form.phase2Marks} onChange={e => setForm({...form, phase2Marks: Number(e.target.value)})}
                       className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
