@@ -78,17 +78,17 @@ export default function StudentDashboard() {
 
     if (info.status === 'phase1_open') {
       if (!hasP1) {
-        return { text: `Check In Now (${countdown})`, icon: 'how_to_reg', disabled: false, variant: 'active' };
+        return { text: `Sign In Now (${countdown})`, icon: 'how_to_reg', disabled: false, variant: 'active' };
       } else {
-        return { text: `✓ Checked In · Phase 1 ends in ${countdown}`, icon: 'check_circle', disabled: true, variant: 'completed' };
+        return { text: `✓ Signed In · Sign in window closes in ${countdown}`, icon: 'check_circle', disabled: true, variant: 'completed' };
       }
     }
     
     if (info.status === 'waiting') {
       if (!hasP1) {
-        return { text: `Phase 1 closed · Phase 2 in ${countdown}`, icon: 'cancel', disabled: true, variant: 'ended' };
+        return { text: `Sign in closed · Sign out opens in ${countdown}`, icon: 'cancel', disabled: true, variant: 'ended' };
       }
-      return { text: `Phase 2 opens in ${countdown}`, icon: 'hourglass_empty', disabled: true, variant: 'waiting' };
+      return { text: `Sign out opens in ${countdown}`, icon: 'hourglass_empty', disabled: true, variant: 'waiting' };
     }
 
     if (info.status === 'phase2_open') {
@@ -98,7 +98,7 @@ export default function StudentDashboard() {
       if (!hasP1) {
         return { text: 'Session Ended', icon: 'block', disabled: true, variant: 'ended' };
       }
-      return { text: `Check Out Now (${countdown})`, icon: 'logout', disabled: false, variant: 'active' };
+      return { text: `Sign Out Now (${countdown})`, icon: 'logout', disabled: false, variant: 'active' };
     }
 
     return { text: 'Session Ended', icon: 'block', disabled: true, variant: 'ended' };
@@ -155,8 +155,8 @@ export default function StudentDashboard() {
           <p className="text-sm text-on-surface-variant mt-1">Here is your verification summary for today.</p>
         </div>
 
-        {/* Face enrollment warning */}
-        {!faceEnrolled && (
+        {/* Face enrollment warning / status */}
+        {!faceEnrolled ? (
           <div className="bg-error-container/30 border border-error/20 rounded-2xl p-4 flex items-start gap-3">
             <span className="material-symbols-outlined text-error mt-0.5 text-xl" style={{fontVariationSettings:"'FILL' 1"}}>warning</span>
             <div className="flex-1">
@@ -164,6 +164,15 @@ export default function StudentDashboard() {
               <p className="text-xs text-on-surface-variant mt-0.5">You cannot mark attendance until you enroll your face.</p>
             </div>
             <a href="/student/enroll" className="text-xs font-bold text-primary whitespace-nowrap mt-0.5 shrink-0">Set up →</a>
+          </div>
+        ) : (
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 flex items-start gap-3 opacity-60">
+            <span className="material-symbols-outlined text-primary mt-0.5 text-xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-on-surface">Face verification complete</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">Your face is registered for attendance.</p>
+            </div>
+            <button onClick={() => alert('Face verification is already complete!')} className="text-xs font-bold text-on-surface-variant whitespace-nowrap mt-0.5 shrink-0">Complete</button>
           </div>
         )}
 

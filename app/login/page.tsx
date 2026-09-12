@@ -53,9 +53,6 @@ export default function LoginPage() {
         <div className="flex items-center justify-between px-container-padding h-touch-target w-full max-w-lg mx-auto">
           <div className="w-10" />
           <h1 className="text-display font-bold text-primary">EduVerify</h1>
-          <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center">
-            <span className="material-symbols-outlined text-outline-variant" style={{fontSize: '20px'}}>person</span>
-          </div>
         </div>
       </header>
 

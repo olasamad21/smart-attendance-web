@@ -90,7 +90,7 @@ export default function ReportsPage() {
 
       reportData.sort((a, b) => a.name.localeCompare(b.name));
 
-      const headers = ['Student Name', 'Matric No', 'Department', 'Level', 'Sessions Attended', 'Total Sessions', 'Phase 1 Score', 'Phase 2 Score', 'Total Score', 'Max Possible', 'Percentage'];
+      const headers = ['Student Name', 'Matric No', 'Department', 'Level', 'Sessions Attended', 'Total Sessions', 'Sign In Score', 'Sign Out Score', 'Total Score', 'Max Possible', 'Percentage'];
       const rows = reportData.map(r => [
         r.name, r.matricNumber, r.department, r.level,
         r.sessionsAttended, r.totalSessions,
@@ -176,7 +176,7 @@ export default function ReportsPage() {
       const attended = records.filter(r => attendedIds.has(r.studentId)).sort((a, b) => a.studentName.localeCompare(b.studentName));
       const absent = students.filter(s => !attendedIds.has(s.userId)).sort((a, b) => a.name.localeCompare(b.name));
 
-      const headers = ['S/N', 'Student Name', 'Matric No', 'Phase 1', 'Phase 2', 'Total', 'Status'];
+      const headers = ['S/N', 'Student Name', 'Matric No', 'Sign In', 'Sign Out', 'Total', 'Status'];
       const rows: (string | number)[][] = [];
       let sn = 1;
       attended.forEach(a => rows.push([sn++, a.studentName, a.matricNumber, a.phase1Score, a.phase2Score, a.totalScore, 'Present']));
@@ -313,7 +313,7 @@ export default function ReportsPage() {
                                 const attendedIds = new Set(records.filter(r => r.phase1Score > 0 || r.phase2Score > 0).map(r => r.studentId));
                                 const attended = records.filter(r => attendedIds.has(r.studentId)).sort((a, b) => a.studentName.localeCompare(b.studentName));
                                 const absent = students.filter(st => !attendedIds.has(st.userId)).sort((a, b) => a.name.localeCompare(b.name));
-                                const headers = ['S/N', 'Student Name', 'Matric No', 'Phase 1', 'Phase 2', 'Total', 'Status'];
+                                const headers = ['S/N', 'Student Name', 'Matric No', 'Sign In', 'Sign Out', 'Total', 'Status'];
                                 const rows: (string | number)[][] = [];
                                 let sn = 1;
                                 attended.forEach(a => rows.push([sn++, a.studentName, a.matricNumber, a.phase1Score, a.phase2Score, a.totalScore, 'Present']));

@@ -171,7 +171,7 @@ export default function StatisticsPage() {
   };
 
   const phaseBreakdownData = {
-    labels: ['Both Phases', 'Phase 1 Only', 'Phase 2 Only', 'Absent'],
+    labels: ['Both (In & Out)', 'Sign In Only', 'Sign Out Only', 'Absent'],
     datasets: [{
       data: [bothPhases, phase1Only, phase2Only, totalAbsentSlots],
       backgroundColor: [

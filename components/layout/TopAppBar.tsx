@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 
 interface TopAppBarProps {
@@ -11,6 +12,7 @@ export default function TopAppBar({ showBack = false, title }: TopAppBarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
   const initials = user?.name?.charAt(0).toUpperCase() || '?';
+  const profileUrl = user?.role === 'lecturer' ? '/lecturer/profile' : '/student/profile';
 
   return (
     <header className="bg-surface w-full sticky top-0 z-50 shadow-sm">
@@ -28,9 +30,9 @@ export default function TopAppBar({ showBack = false, title }: TopAppBarProps) {
         <h1 className="text-display font-bold text-primary tracking-tight">
           {title || 'EduVerify'}
         </h1>
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+        <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
           <span className="text-on-primary text-xs font-bold">{initials}</span>
-        </div>
+        </Link>
       </div>
     </header>
   );

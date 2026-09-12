@@ -122,7 +122,7 @@ export default function LiveSessionPage() {
     setDownloading(true);
     setShowExportMenu(false);
     try {
-      const headers = ['S/N', 'Student Name', 'Matric No', 'Phase 1', 'Phase 2', 'Total', 'Status'];
+      const headers = ['S/N', 'Student Name', 'Matric No', 'Sign In', 'Sign Out', 'Total', 'Status'];
       const attended = getAttendedStudents();
       const rows: (string | number)[][] = [];
       let sn = 1;
@@ -260,7 +260,7 @@ export default function LiveSessionPage() {
                 className="w-full mb-6 bg-secondary-container text-on-secondary-container rounded-xl h-12 font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span className="material-symbols-outlined text-lg">fast_forward</span>
-                Start Phase 2 Now
+                Start Sign Out Now
               </button>
             )}
 
@@ -270,13 +270,13 @@ export default function LiveSessionPage() {
                 <p className="text-3xl font-bold text-on-surface">
                   {attendees.filter(a => a.phase1Score > 0).length}
                 </p>
-                <p className="text-xs text-on-surface-variant mt-1">Phase 1 checked in</p>
+                <p className="text-xs text-on-surface-variant mt-1">Signed in</p>
               </div>
               <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
                 <p className="text-3xl font-bold text-on-surface">
                   {attendees.filter(a => a.phase2Score > 0).length}
                 </p>
-                <p className="text-xs text-on-surface-variant mt-1">Phase 2 checked out</p>
+                <p className="text-xs text-on-surface-variant mt-1">Signed out</p>
               </div>
             </div>
 
@@ -459,11 +459,11 @@ export default function LiveSessionPage() {
       {showPhase2Dialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-on-surface mb-2">Start Phase 2</h3>
-            <p className="text-sm text-on-surface-variant mb-6">Skip the waiting period and start Phase 2 immediately.</p>
+            <h3 className="text-xl font-bold text-on-surface mb-2">Start Sign Out</h3>
+            <p className="text-sm text-on-surface-variant mb-6">Skip the waiting period and start the sign out phase immediately.</p>
             
             <div className="mb-6">
-              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">Phase 2 Duration (minutes)</label>
+              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">Sign Out Duration (minutes)</label>
               <div className="relative">
                 <input
                   type="number"
