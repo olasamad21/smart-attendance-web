@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { getStudentCourses } from '@/lib/firebase/courses.service';
 import { getActiveSessionWithSync, getStudentSessionAttendance } from '@/lib/firebase/sessions.service';
@@ -241,27 +242,41 @@ export default function StudentDashboard() {
             />
           ) : (
             <div className="flex flex-col gap-3">
-              {courses.map(course => {
+              {[...courses]
+                .sort((a, b) => {
+                  const aActive = activeSessions[a.courseId] && activeSessions[a.courseId].status !== 'ended' ? 1 : 0;
+                  const bActive = activeSessions[b.courseId] && activeSessions[b.courseId].status !== 'ended' ? 1 : 0;
+                  if (bActive !== aActive) return bActive - aActive;
+                  return (a.courseTitle || '').localeCompare(b.courseTitle || '');
+                })
+                .map(course => {
                 const isActive = activeSessions[course.courseId] && activeSessions[course.courseId].status !== 'ended';
                 return (
-                  <div key={course.courseId}
-                    className={`bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20 relative overflow-hidden ${isActive ? 'border-primary/30' : ''}`}>
+                  <Link key={course.courseId} href={`/student/courses/${course.courseId}`}
+                    className={`bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20 relative overflow-hidden active:scale-[0.98] transition-all ${isActive ? 'border-primary/30' : ''}`}>
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isActive ? 'bg-primary' : 'bg-outline-variant'}`} />
-                    <div className="pl-4">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{course.courseCode}</span>
+                    <div className="pl-4 flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{course.courseCode}</span>
+                          {isActive && (
+                            <span className="text-xs font-bold text-on-primary bg-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-secondary-fixed rounded-full animate-pulse inline-block" />
+                              Live
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-on-surface">{course.courseTitle}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">{course.lecturerName}</p>
                         {isActive && (
-                          <span className="text-xs font-bold text-on-primary bg-primary px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-secondary-fixed rounded-full animate-pulse inline-block" />
-                            Live
-                          </span>
+                          <div onClick={e => e.preventDefault()}>
+                            {renderSmartButton(course, false)}
+                          </div>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-on-surface">{course.courseTitle}</p>
-                      <p className="text-xs text-on-surface-variant mt-0.5">{course.lecturerName}</p>
-                      {isActive && renderSmartButton(course, false)}
+                      <span className="material-symbols-outlined text-outline text-lg mt-1 shrink-0">chevron_right</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
