@@ -9,6 +9,8 @@ import { verifyFace } from '@/lib/api/face.api';
 import { getCurrentPosition, calculateDistance, isWithinRadius } from '@/lib/utils/gps.utils';
 import { Session, Course } from '@/types';
 
+const GRACE_PERIOD_SECONDS = 45;
+
 type VerifyStep = 'gps' | 'camera' | 'processing' | 'success' | 'failed' | 'already_recorded' | 'no_session';
 
 export default function VerifyPage() {
@@ -36,11 +38,23 @@ export default function VerifyPage() {
   const [faceDetectorSupported, setFaceDetectorSupported] = useState(true);
   const blinkTracker = useRef<{ lastEyeOpen: boolean; blinkCount: number }>({ lastEyeOpen: true, blinkCount: 0 });
   const [sessionEnded, setSessionEnded] = useState(false);
+  const graceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!courseId || !user) return;
     getActiveSessionWithSync(courseId).then(async s => {
-      if (!s) { setStep('no_session'); return; }
+      if (!s) {
+        // Option B: check if a session exists but is ended (vs truly no session)
+        const { getSessionsForCourse } = await import('@/lib/firebase/sessions.service');
+        const allSessions = await getSessionsForCourse(courseId);
+        const latestSession = allSessions[0]; // ordered by createdAt desc
+        if (latestSession && latestSession.status === 'ended') {
+          setSessionEnded(true);
+        } else {
+          setStep('no_session');
+        }
+        return;
+      }
       setSession(s);
       const c = await getCourseById(s.courseId);
       setCourse(c);
@@ -231,18 +245,34 @@ export default function VerifyPage() {
     };
   }, [step, cameraReady, livenessState]);
 
-  useEffect(() => { return () => stopCamera(); }, []);
+  useEffect(() => {
+    return () => {
+      stopCamera();
+      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
+    };
+  }, []);
 
   // Real-time listener: detect if lecturer ends the session while student is on this screen
+  // Starts a grace period timer instead of immediately interrupting
   useEffect(() => {
     if (!session) return;
     const unsubscribe = subscribeToSession(session.sessionId, (updatedSession) => {
       if (!updatedSession || updatedSession.status === 'ended') {
-        setSessionEnded(true);
-        stopCamera();
+        // Guard: don't start a second timer if one is already running
+        if (graceTimerRef.current) return;
+        graceTimerRef.current = setTimeout(() => {
+          setSessionEnded(true);
+          stopCamera();
+        }, GRACE_PERIOD_SECONDS * 1000);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
+    };
   }, [session?.sessionId]);
 
   const phaseLabel = phase === 'phase1' ? 'Phase 1 — Check In' : 'Phase 2 — Check Out';
