@@ -147,6 +147,31 @@ export async function getActiveSessionWithSync(courseId: string): Promise<Sessio
   return synced;
 }
 
+export function subscribeToActiveSessionForCourse(
+  courseId: string,
+  callback: (session: Session | null) => void
+): () => void {
+  const q = query(
+    collection(db, 'sessions'),
+    where('courseId', '==', courseId),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(q, (snap) => {
+    if (snap.empty) {
+      callback(null);
+      return;
+    }
+    const activeSessions = snap.docs
+      .map(d => ({ sessionId: d.id, ...d.data() } as Session))
+      .filter(s => s.status !== 'ended');
+    
+    callback(activeSessions.length > 0 ? activeSessions[0] : null);
+  }, (error) => {
+    console.error('Error listening to active session:', error);
+    callback(null);
+  });
+}
+
 /**
  * Get a student's attendance record for a specific session.
  */
@@ -162,4 +187,29 @@ export async function getStudentSessionAttendance(
   const snap = await getDocs(q);
   if (snap.empty) return null;
   return { attendanceId: snap.docs[0].id, ...snap.docs[0].data() } as import('@/types').AttendanceRecord;
+}
+
+/**
+ * Subscribe to a student's attendance record for a specific session.
+ */
+export function subscribeToStudentSessionAttendance(
+  sessionId: string,
+  studentId: string,
+  callback: (record: import('@/types').AttendanceRecord | null) => void
+): () => void {
+  const q = query(
+    collection(db, 'attendance'),
+    where('sessionId', '==', sessionId),
+    where('studentId', '==', studentId)
+  );
+  return onSnapshot(q, (snap) => {
+    if (snap.empty) {
+      callback(null);
+    } else {
+      callback({ attendanceId: snap.docs[0].id, ...snap.docs[0].data() } as import('@/types').AttendanceRecord);
+    }
+  }, (error) => {
+    console.error('Error listening to student attendance:', error);
+    callback(null);
+  });
 }
