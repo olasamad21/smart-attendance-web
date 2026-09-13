@@ -37,6 +37,8 @@ export type PhaseInfo = {
   label: string;
   /** Milliseconds remaining in this phase (or until next phase) */
   remaining: number;
+  /** Milliseconds remaining until phase 2 starts */
+  timeUntilPhase2?: number;
   /** The resolved session status */
   status: Session['status'];
   /** Human-readable description of what's happening */
@@ -58,6 +60,7 @@ export function getPhaseInfo(session: Session): PhaseInfo {
       return {
         label: 'Phase 1 — Check In',
         remaining: Math.max(0, phase1End.getTime() - now.getTime()),
+        timeUntilPhase2: Math.max(0, phase2Start.getTime() - now.getTime()),
         status,
         description: 'Check-in window is open',
       };

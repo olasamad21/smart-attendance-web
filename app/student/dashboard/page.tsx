@@ -81,7 +81,8 @@ export default function StudentDashboard() {
       if (!hasP1) {
         return { text: `Sign In Now (${countdown})`, icon: 'how_to_reg', disabled: false, variant: 'active' };
       } else {
-        return { text: `✓ Signed In · Sign in window closes in ${countdown}`, icon: 'check_circle', disabled: true, variant: 'completed' };
+        const timeUntilPhase2 = formatCountdown(info.timeUntilPhase2 || 0);
+        return { text: `Signed In · Sign out opens in ${timeUntilPhase2}`, icon: 'hourglass_empty', disabled: true, variant: 'waiting' };
       }
     }
     
