@@ -10,6 +10,7 @@ import { getSessionAttendance } from '@/lib/firebase/attendance.service';
 import { downloadCSV } from '@/lib/utils/csv.utils';
 import { Course, UserProfile, Session } from '@/types';
 import TopAppBar from '@/components/layout/TopAppBar';
+import AppDialog from '@/components/ui/AppDialog';
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -23,6 +24,8 @@ export default function CourseDetailPage() {
   const [editingCourse, setEditingCourse] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [editData, setEditData] = useState({ courseTitle: '', courseCode: '', defaultDuration: 60, phase1Marks: 3, phase2Marks: 2 });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCopiedDialog, setShowCopiedDialog] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -76,9 +79,14 @@ export default function CourseDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!course) return;
-    if (!confirm(`Delete "${course.courseTitle}"? This cannot be undone.`)) return;
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!course) return;
+    setShowDeleteDialog(false);
     try {
       await deleteCourse(course.courseId);
       router.push('/lecturer/courses');
@@ -147,7 +155,7 @@ export default function CourseDetailPage() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(course.enrollmentKey || '');
-                  alert('Password copied to clipboard!');
+                  setShowCopiedDialog(true);
                 }}
                 className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center hover:brightness-95 active:scale-95 transition-all shrink-0"
                 title="Copy Password"
@@ -366,6 +374,27 @@ export default function CourseDetailPage() {
           </div>
         </div>
       )}
+      {/* Delete Course Dialog */}
+      <AppDialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        icon="delete"
+        variant="destructive"
+        title={`Delete "${course?.courseTitle}"?`}
+        description="This will permanently remove the course and all its data. This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
+
+      {/* Password Copied Dialog */}
+      <AppDialog
+        open={showCopiedDialog}
+        onClose={() => setShowCopiedDialog(false)}
+        icon="content_copy"
+        variant="info"
+        title="Copied!"
+        description="Enrollment password has been copied to your clipboard."
+      />
     </div>
   );
 }
