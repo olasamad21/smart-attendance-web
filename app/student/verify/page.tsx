@@ -3,10 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { getActiveSessionWithSync } from '@/lib/firebase/sessions.service';
-import { recordPhase1, recordPhase2 } from '@/lib/firebase/attendance.service';
 import { getCourseById } from '@/lib/firebase/courses.service';
 import { verifyFace } from '@/lib/api/face.api';
-import { getCurrentPosition, calculateDistance, isWithinRadius } from '@/lib/utils/gps.utils';
+import { getCurrentPosition, calculateDistance } from '@/lib/utils/gps.utils';
 import { Session, Course } from '@/types';
 
 type VerifyStep = 'gps' | 'camera' | 'processing' | 'success' | 'failed' | 'already_recorded' | 'no_session';
@@ -27,7 +26,6 @@ export default function VerifyPage() {
   const [gpsDistance, setGpsDistance] = useState(0);
   const [gpsError, setGpsError] = useState('');
   const [attempts, setAttempts] = useState(0);
-  const [confidence, setConfidence] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [phase, setPhase] = useState<'phase1' | 'phase2'>('phase1');
   
@@ -48,19 +46,17 @@ export default function VerifyPage() {
     }).catch(() => setStep('no_session'));
   }, [courseId]);
 
+  const [gpsCoords, setGpsCoords] = useState<{lat: number, lng: number} | null>(null);
+
   const checkGPS = async (s: Session) => {
     setGpsStatus('checking');
     try {
       const pos = await getCurrentPosition();
       const dist = calculateDistance(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng);
       setGpsDistance(Math.round(dist));
-      if (isWithinRadius(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng, s.classroomRadius)) {
-        setGpsStatus('confirmed');
-        setTimeout(() => startCamera(), 1000);
-      } else {
-        setGpsStatus('failed');
-        setGpsError(`You are ${Math.round(dist)}m away (max ${s.classroomRadius}m allowed)`);
-      }
+      setGpsCoords({ lat: pos.latitude, lng: pos.longitude });
+      setGpsStatus('confirmed');
+      setTimeout(() => startCamera(), 1000);
     } catch (e: any) {
       setGpsStatus('failed');
       setGpsError(e.message);
@@ -116,46 +112,30 @@ export default function VerifyPage() {
 
     stopCamera();
 
-    const result = await verifyFace(user.userId, base64);
-    setConfidence(result.confidence);
+    const result = await verifyFace(
+      user.userId, 
+      base64, 
+      session.sessionId, 
+      gpsCoords?.lat || 0, 
+      gpsCoords?.lng || 0
+    );
 
-    if (result.matched) {
-      try {
-        if (phase === 'phase1') {
-          await recordPhase1({
-            sessionId: session.sessionId,
-            courseId: session.courseId,
-            studentId: user.userId,
-            studentName: user.name,
-            matricNumber: user.matricNumber || '',
-            phase1Score: course?.phase1Marks ?? 3,
-            faceMatchConfidence: result.confidence,
-            gpsDistance,
-          });
-        } else {
-          await recordPhase2(session.sessionId, user.userId, {
-            phase2Score: course?.phase2Marks ?? 2,
-            faceMatchConfidence: result.confidence,
-            gpsDistance,
-          });
-        }
-        setStep('success');
-      } catch (e: any) {
-        if (e.message === 'ALREADY_RECORDED') {
-          setStep('already_recorded');
-        } else {
-          setErrorMsg(e.message || 'Failed to record attendance');
-          setStep('failed');
-        }
-      }
+    if (result.success) {
+      setStep('success');
     } else {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
+      
+      if (result.error_type === 'ALREADY_CHECKED_IN') {
+        setStep('already_recorded');
+        return;
+      }
+
       if (newAttempts >= 3) {
-        setErrorMsg(`Face verification failed after 3 attempts. Confidence: ${result.confidence.toFixed(1)}%`);
+        setErrorMsg(result.message || 'Verification failed after 3 attempts.');
         setStep('failed');
       } else {
-        setErrorMsg(`Face did not match (${result.confidence.toFixed(1)}% confidence, 70% required). Attempt ${newAttempts}/3`);
+        setErrorMsg(`${result.message || 'Verification failed'}. Attempt ${newAttempts}/3`);
         setStep('failed');
       }
     }
@@ -341,7 +321,6 @@ export default function VerifyPage() {
         <span className="material-symbols-outlined text-primary text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
       </div>
       <h2 className="text-2xl font-bold text-on-surface mb-2">{phase === 'phase1' ? 'Check-in Recorded!' : 'Check-out Recorded!'}</h2>
-      <p className="text-sm text-on-surface-variant mb-2">Face match confidence: {confidence.toFixed(1)}%</p>
       <p className="text-sm text-on-surface-variant mb-8">{phase === 'phase1' ? `+${course?.phase1Marks ?? 3} marks awarded` : `+${course?.phase2Marks ?? 2} marks awarded`}</p>
       <button onClick={() => router.push('/student/dashboard')}
         className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">

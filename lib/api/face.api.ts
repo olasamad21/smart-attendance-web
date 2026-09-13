@@ -17,20 +17,36 @@ export async function enrollFace(userId: string, base64Image: string): Promise<{
   }
 }
 
-export async function verifyFace(userId: string, base64Image: string): Promise<{matched: boolean, confidence: number, error?: string}> {
+export async function verifyFace(
+  userId: string, 
+  base64Image: string, 
+  sessionId: string, 
+  lat: number, 
+  lon: number
+): Promise<{success: boolean, error_type?: string, message?: string}> {
   try {
     const response = await fetch(`${API_URL}/api/face/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, image: base64Image }),
+      body: JSON.stringify({ 
+        user_id: userId, 
+        image: base64Image,
+        session_id: sessionId,
+        latitude: lat,
+        longitude: lon
+      }),
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      return { matched: false, confidence: 0, error: error.detail || 'Verification failed' };
+      // FastAPI slowapi returns 429 Too Many Requests
+      if (response.status === 429) {
+          return { success: false, error_type: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' };
+      }
+      return { success: false, error_type: 'API_ERROR', message: error.detail || 'Verification failed' };
     }
     return await response.json();
   } catch (error: any) {
-    return { matched: false, confidence: 0, error: 'Network error: ' + error.message };
+    return { success: false, error_type: 'NETWORK_ERROR', message: 'Network error: ' + error.message };
   }
 }
 
