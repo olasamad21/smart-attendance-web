@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { getStudentCourses, enrollStudent, getCourseByCodeAndKey } from '@/lib/firebase/courses.service';
-import { getActiveSessionWithSync, getStudentSessionAttendance } from '@/lib/firebase/sessions.service';
+import { subscribeToActiveSessionForCourse, subscribeToStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session, AttendanceRecord } from '@/types';
@@ -28,39 +28,87 @@ export default function StudentCoursesPage() {
   const [joining, setJoining] = useState(false);
   const [joinMsg, setJoinMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
 
-  const load = async () => {
-    if (!user?.userId) return;
-    setIsLoading(true);
-    try {
-      const fetchedCourses = await getStudentCourses(user.userId);
-      setCourses(fetchedCourses);
-      
-      const sessionMap: Record<string, Session | null> = {};
-      const recordMap: Record<string, AttendanceRecord | null> = {};
-      
-      await Promise.all(
-        fetchedCourses.map(async (course) => {
-          try {
-            const session = await getActiveSessionWithSync(course.courseId);
-            sessionMap[course.courseId] = session;
-            
-            if (session) {
-              const record = await getStudentSessionAttendance(session.sessionId, user.userId);
-              recordMap[course.courseId] = record;
-            }
-          } catch {
-            sessionMap[course.courseId] = null;
-          }
-        })
-      );
-      setActiveSessions(sessionMap);
-      setStudentRecords(recordMap);
-    }
-    catch (e) { console.error(e); }
-    finally { setIsLoading(false); }
-  };
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
-  useEffect(() => { load(); }, [user?.userId]);
+  useEffect(() => {
+    if (!user?.userId) return;
+    let isMounted = true;
+    const sessionUnsubs: (() => void)[] = [];
+    const recordUnsubs: Record<string, () => void> = {};
+
+    setIsLoading(true);
+
+    getStudentCourses(user.userId).then(async (fetchedCourses) => {
+      if (!isMounted) return;
+      setCourses(fetchedCourses);
+
+      if (fetchedCourses.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      await Promise.all(fetchedCourses.map(course => new Promise<void>(resolve => {
+        let sessionInitialized = false;
+
+        const sessionUnsub = subscribeToActiveSessionForCourse(course.courseId, (session) => {
+          if (!isMounted) return;
+
+          if (session) {
+            setActiveSessions(prev => ({ ...prev, [course.courseId]: session }));
+            
+            if (!recordUnsubs[course.courseId]) {
+              recordUnsubs[course.courseId] = subscribeToStudentSessionAttendance(session.sessionId, user.userId, (record) => {
+                if (!isMounted) return;
+                setStudentRecords(prev => {
+                  if (record) {
+                    return { ...prev, [course.courseId]: record };
+                  } else {
+                    const next = { ...prev };
+                    delete next[course.courseId];
+                    return next;
+                  }
+                });
+              });
+            }
+          } else {
+            setActiveSessions(prev => {
+              const next = { ...prev };
+              delete next[course.courseId];
+              return next;
+            });
+            setStudentRecords(prev => {
+              const next = { ...prev };
+              delete next[course.courseId];
+              return next;
+            });
+            if (recordUnsubs[course.courseId]) {
+              recordUnsubs[course.courseId]();
+              delete recordUnsubs[course.courseId];
+            }
+          }
+
+          if (!sessionInitialized) {
+            sessionInitialized = true;
+            resolve();
+          }
+        });
+        sessionUnsubs.push(sessionUnsub);
+      })));
+
+      if (isMounted) setIsLoading(false);
+    }).catch(e => {
+      console.error(e);
+      if (isMounted) setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      sessionUnsubs.forEach(unsub => unsub());
+      Object.values(recordUnsubs).forEach(unsub => unsub());
+    };
+  }, [user?.userId, reloadTrigger]);
+
+  const load = () => setReloadTrigger(t => t + 1);
 
   const handleJoin = async () => {
     if (!code || !enrollmentKey) { setJoinMsg({type: 'error', text: 'Enter both Course Code and Password'}); return; }

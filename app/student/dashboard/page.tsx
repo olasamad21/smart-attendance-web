@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { getStudentCourses } from '@/lib/firebase/courses.service';
-import { getActiveSessionWithSync, getStudentSessionAttendance } from '@/lib/firebase/sessions.service';
+import { subscribeToActiveSessionForCourse, subscribeToStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import { checkFaceEnrolled } from '@/lib/api/face.api';
 import TopAppBar from '@/components/layout/TopAppBar';
@@ -36,32 +36,84 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!user?.userId) return;
+    let isMounted = true;
+    const sessionUnsubs: (() => void)[] = [];
+    const recordUnsubs: Record<string, () => void> = {};
+
     Promise.all([
       getStudentCourses(user.userId),
       checkFaceEnrolled(user.userId).catch(() => ({ enrolled: false })),
     ]).then(async ([courseData, faceStatus]) => {
+      if (!isMounted) return;
       setCourses(courseData);
       setFaceEnrolled(faceStatus.enrolled);
-      const sessionMap: Record<string, Session> = {};
-      const recordMap: Record<string, AttendanceRecord> = {};
-      await Promise.all(courseData.map(async (course) => {
-        try {
-          const session = await getActiveSessionWithSync(course.courseId);
+
+      if (courseData.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      await Promise.all(courseData.map(course => new Promise<void>(resolve => {
+        let sessionInitialized = false;
+        
+        const sessionUnsub = subscribeToActiveSessionForCourse(course.courseId, (session) => {
+          if (!isMounted) return;
+          
           if (session) {
-            sessionMap[course.courseId] = session;
-            const record = await getStudentSessionAttendance(session.sessionId, user.userId);
-            if (record) {
-              recordMap[course.courseId] = record;
+            setActiveSessions(prev => ({ ...prev, [course.courseId]: session }));
+            
+            // Manage record subscription
+            if (!recordUnsubs[course.courseId]) {
+              recordUnsubs[course.courseId] = subscribeToStudentSessionAttendance(session.sessionId, user.userId, (record) => {
+                if (!isMounted) return;
+                setStudentRecords(prev => {
+                  if (record) {
+                    return { ...prev, [course.courseId]: record };
+                  } else {
+                    const next = { ...prev };
+                    delete next[course.courseId];
+                    return next;
+                  }
+                });
+              });
+            }
+          } else {
+            // Cleanup state and nested listener
+            setActiveSessions(prev => {
+              const next = { ...prev };
+              delete next[course.courseId];
+              return next;
+            });
+            setStudentRecords(prev => {
+              const next = { ...prev };
+              delete next[course.courseId];
+              return next;
+            });
+            if (recordUnsubs[course.courseId]) {
+              recordUnsubs[course.courseId]();
+              delete recordUnsubs[course.courseId];
             }
           }
-        } catch {
-          // ignore
-        }
-      }));
-      setActiveSessions(sessionMap);
-      setStudentRecords(recordMap);
-    }).catch(console.error)
-      .finally(() => setIsLoading(false));
+
+          if (!sessionInitialized) {
+            sessionInitialized = true;
+            resolve();
+          }
+        });
+        sessionUnsubs.push(sessionUnsub);
+      })));
+
+      if (isMounted) setIsLoading(false);
+    }).catch((e) => {
+      console.error(e);
+      if (isMounted) setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      sessionUnsubs.forEach(unsub => unsub());
+      Object.values(recordUnsubs).forEach(unsub => unsub());
+    };
   }, [user?.userId]);
 
   const activeCourses = courses.filter(c => activeSessions[c.courseId] && activeSessions[c.courseId].status !== 'ended');
