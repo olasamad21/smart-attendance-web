@@ -16,7 +16,7 @@ export default function TopAppBar({ showBack = false, title }: TopAppBarProps) {
 
   return (
     <header className="bg-surface w-full sticky top-0 z-50 shadow-sm">
-      <div className="flex items-center justify-between px-container-padding h-touch-target w-full max-w-lg mx-auto">
+      <div className="flex items-center justify-between px-5 h-12 w-full max-w-lg mx-auto">
         {showBack ? (
           <button
             onClick={() => router.back()}
@@ -27,7 +27,7 @@ export default function TopAppBar({ showBack = false, title }: TopAppBarProps) {
         ) : (
           <div className="w-10" />
         )}
-        <h1 className="text-display font-bold text-primary tracking-tight">
+        <h1 className="text-xl font-bold text-primary tracking-tight">
           {title || 'EduVerify'}
         </h1>
         <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
