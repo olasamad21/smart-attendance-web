@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
@@ -13,6 +14,28 @@ interface TopAppBarProps {
 export default function TopAppBar({ showBack = false, isModal = false, isAuth = false, title }: TopAppBarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check initial theme from HTML class or localStorage on mount
+    setIsDark(document.documentElement.classList.contains('dark'));
+  }, []);
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const currentlyDark = root.classList.contains('dark');
+    
+    if (currentlyDark) {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
+
   const initials = user?.name?.charAt(0).toUpperCase() || '?';
   const profileUrl = user?.role === 'lecturer' ? '/lecturer/profile' : '/student/profile';
 
@@ -78,8 +101,14 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
         {!showBack && user && (
           <div className="flex items-center shrink-0 gap-2">
             {title === 'Profile' ? (
-              <button title="Toggle Theme" className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all">
-                <span className="material-symbols-outlined text-[20px]">light_mode</span>
+              <button 
+                title="Toggle Theme" 
+                onClick={toggleTheme}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {isDark ? 'light_mode' : 'dark_mode'}
+                </span>
               </button>
             ) : (
               <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
