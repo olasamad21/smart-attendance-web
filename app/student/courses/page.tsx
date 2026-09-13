@@ -135,9 +135,9 @@ export default function StudentCoursesPage() {
                     );
                   } else if (phaseInfo.status === 'phase1_open' && isPhase1Done) {
                     buttonState = (
-                      <button disabled className="mt-3 w-full h-10 bg-green-100 border border-green-300 text-green-800 disabled:opacity-100 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300 rounded-full text-xs font-semibold flex items-center justify-center gap-1">
-                        <span className="material-symbols-outlined text-base">check_circle</span>
-                        Signed In · Sign out opens in {formatCountdown(phaseInfo.remaining)}
+                      <button disabled className="mt-3 w-full h-10 bg-on-primary-container/10 border border-on-primary-container/20 text-on-primary-container disabled:opacity-80 rounded-full text-xs font-semibold flex items-center justify-center gap-1">
+                        <span className="material-symbols-outlined text-base">hourglass_empty</span>
+                        Signed In · Sign Out opens in {formatCountdown(phaseInfo.timeUntilPhase2 || 0)}
                       </button>
                     );
                   } else if (phaseInfo.status === 'waiting') {
