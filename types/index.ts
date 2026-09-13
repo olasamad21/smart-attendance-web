@@ -87,6 +87,11 @@ export interface AttendanceRecord {
   timestamp: any;
   faceMatchConfidence?: number;
   gpsDistance?: number;
+  phase1VerificationMethod?: 'face_gps' | 'manual_override';
+  phase2VerificationMethod?: 'face_gps' | 'manual_override';
+  overriddenBy?: string;
+  overrideReason?: string | null;
+  overrideTimestamp?: any;
 }
 
 export interface AttendanceSummary {
