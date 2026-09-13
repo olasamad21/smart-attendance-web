@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import TopAppBar from '@/components/layout/TopAppBar';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -39,15 +40,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="w-full sticky top-0 z-50 bg-surface shadow-sm">
-        <div className="flex items-center px-5 h-12 w-full max-w-lg mx-auto">
-          <Link href="/login" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-low text-primary active:scale-95">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </Link>
-          <h1 className="text-xl font-bold text-primary ml-2">EduVerify</h1>
-        </div>
-      </header>
+      <TopAppBar isAuth showBack />
 
       <main className="flex-1 flex flex-col justify-center px-6 max-w-md mx-auto w-full pb-12">
         {!sent ? (

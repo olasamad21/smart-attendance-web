@@ -8,6 +8,8 @@ import { registerSchema, RegisterInput } from '@/lib/utils/validation';
 import { registerUser } from '@/lib/firebase/auth.service';
 import { useAuthStore } from '@/store/auth.store';
 
+import TopAppBar from '@/components/layout/TopAppBar';
+
 const DEPARTMENTS = [
   'Computer Science', 'Software Engineering', 'Cyber Security',
   'Information Technology', 'Computer Engineering', 'Electrical Engineering',
@@ -70,15 +72,7 @@ export default function RegisterPage() {
 
   return (
     <div className="bg-surface text-on-surface flex flex-col min-h-screen">
-      <header className="w-full sticky top-0 z-50 bg-surface shadow-sm">
-        <div className="flex items-center justify-between px-5 h-12 w-full max-w-lg mx-auto">
-          <Link href="/login" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-low text-primary active:scale-95">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </Link>
-          <h1 className="text-xl font-bold text-primary">EduVerify</h1>
-          <div className="w-10" />
-        </div>
-      </header>
+      <TopAppBar isAuth showBack />
 
       <main className="flex-1 px-5 py-6 w-full max-w-md mx-auto overflow-y-auto pb-10">
         <div className="mb-6">

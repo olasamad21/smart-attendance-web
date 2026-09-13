@@ -38,7 +38,7 @@ export default function StudentProfilePage() {
 
   return (
     <div className="bg-background">
-      <TopAppBar title="Profile" showBack />
+      <TopAppBar title="Profile" showBack isModal />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 
         {/* Avatar */}
