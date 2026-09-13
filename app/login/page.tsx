@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/utils/validation';
 import { loginUser } from '@/lib/firebase/auth.service';
 import { useAuthStore } from '@/store/auth.store';
+import TopAppBar from '@/components/layout/TopAppBar';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,13 +49,7 @@ export default function LoginPage() {
 
   return (
     <div className="bg-surface text-on-surface flex flex-col min-h-screen">
-      {/* Top App Bar */}
-      <header className="w-full sticky top-0 z-50 bg-surface shadow-sm">
-        <div className="flex items-center justify-between px-5 h-12 w-full max-w-lg mx-auto">
-          <div className="w-10" />
-          <h1 className="text-xl font-bold text-primary">EduVerify</h1>
-        </div>
-      </header>
+      <TopAppBar isAuth />
 
       <main className="flex-1 px-5 py-6 flex flex-col w-full max-w-md mx-auto">
         <div className="mb-6 pt-4">

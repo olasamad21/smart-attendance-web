@@ -147,7 +147,7 @@ export default function StudentDashboard() {
 
   return (
     <div className="bg-background">
-      <TopAppBar />
+      <TopAppBar title="Dashboard" />
       <main className="px-5 pt-5 max-w-lg mx-auto pb-8 flex flex-col gap-5">
 
         {/* Greeting */}
