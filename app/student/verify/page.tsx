@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
-import { getActiveSessionWithSync } from '@/lib/firebase/sessions.service';
+import { getActiveSessionWithSync, subscribeToSession } from '@/lib/firebase/sessions.service';
 import { recordPhase1, recordPhase2 } from '@/lib/firebase/attendance.service';
 import { getCourseById } from '@/lib/firebase/courses.service';
 import { verifyFace } from '@/lib/api/face.api';
@@ -35,6 +35,7 @@ export default function VerifyPage() {
   const [livenessState, setLivenessState] = useState<'waiting_face' | 'waiting_blink' | 'blink_detected'>('waiting_face');
   const [faceDetectorSupported, setFaceDetectorSupported] = useState(true);
   const blinkTracker = useRef<{ lastEyeOpen: boolean; blinkCount: number }>({ lastEyeOpen: true, blinkCount: 0 });
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   useEffect(() => {
     if (!courseId || !user) return;
@@ -232,7 +233,34 @@ export default function VerifyPage() {
 
   useEffect(() => { return () => stopCamera(); }, []);
 
+  // Real-time listener: detect if lecturer ends the session while student is on this screen
+  useEffect(() => {
+    if (!session) return;
+    const unsubscribe = subscribeToSession(session.sessionId, (updatedSession) => {
+      if (!updatedSession || updatedSession.status === 'ended') {
+        setSessionEnded(true);
+        stopCamera();
+      }
+    });
+    return () => unsubscribe();
+  }, [session?.sessionId]);
+
   const phaseLabel = phase === 'phase1' ? 'Phase 1 — Check In' : 'Phase 2 — Check Out';
+
+  // Session ended takes priority over every other screen
+  if (sessionEnded) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
+      <div className="w-24 h-24 rounded-full bg-error-container/30 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-error text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>event_busy</span>
+      </div>
+      <h2 className="text-xl font-bold text-on-surface mb-2">Session Ended</h2>
+      <p className="text-sm text-on-surface-variant mb-8">The lecturer has ended this attendance session.</p>
+      <button onClick={() => router.push('/student/dashboard')}
+        className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
+        Back to Dashboard
+      </button>
+    </div>
+  );
 
   if (step === 'no_session') return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
