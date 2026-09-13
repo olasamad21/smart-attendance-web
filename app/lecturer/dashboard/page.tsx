@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { getLecturerCourses } from '@/lib/firebase/courses.service';
-import { getActiveSessionWithSync } from '@/lib/firebase/sessions.service';
+import { subscribeToActiveSessionForCourse } from '@/lib/firebase/sessions.service';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
@@ -18,26 +18,41 @@ function getGreeting() {
 export default function LecturerDashboard() {
   const { user } = useAuthStore();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [activeSession, setActiveSession] = useState<Session | null>(null);
+  const [activeSessions, setActiveSessions] = useState<Record<string, Session | null>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.userId) return;
+    let isMounted = true;
+    const sessionUnsubs: (() => void)[] = [];
+
     getLecturerCourses(user.userId)
       .then(async (courseData) => {
+        if (!isMounted) return;
         setCourses(courseData);
-        // Find if any of the lecturer's courses has an active session
-        const activeArr = await Promise.all(
-          courseData.map(c => getActiveSessionWithSync(c.courseId))
-        );
-        const runningSession = activeArr.find(s => s && s.status !== 'ended');
-        setActiveSession(runningSession || null);
+
+        // Set up real-time listener for each course
+        courseData.forEach(course => {
+          const unsub = subscribeToActiveSessionForCourse(course.courseId, (session) => {
+            if (!isMounted) return;
+            setActiveSessions(prev => ({ ...prev, [course.courseId]: session }));
+          });
+          sessionUnsubs.push(unsub);
+        });
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
+
+    return () => {
+      isMounted = false;
+      sessionUnsubs.forEach(unsub => unsub());
+    };
   }, [user?.userId]);
 
   const firstName = user?.name || 'there';
+  
+  // Pick the first non-ended session
+  const activeSession = Object.values(activeSessions).find(s => s && s.status !== 'ended');
 
   return (
     <div className="bg-background">
@@ -64,9 +79,9 @@ export default function LecturerDashboard() {
                     {activeSession.courseCode} Live
                   </p>
                 </div>
-                <div className="bg-error/10 px-3 py-1 rounded-full flex items-center gap-1 border border-error/20">
-                  <span className="material-symbols-outlined text-error animate-pulse" style={{fontSize: '16px'}}>radio_button_checked</span>
-                  <span className="text-xs text-error font-bold">Live</span>
+                <div className="bg-primary text-on-primary px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 bg-secondary-fixed rounded-full animate-pulse inline-block" />
+                  <span className="text-xs font-bold">Live</span>
                 </div>
               </div>
             </Link>

@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { getLecturerCourses, deleteCourse, createCourse } from '@/lib/firebase/courses.service';
+import { subscribeToActiveSessionForCourse } from '@/lib/firebase/sessions.service';
 import TopAppBar from '@/components/layout/TopAppBar';
-import { Course } from '@/types';
+import { Course, Session } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 
 export default function LecturerCoursesPage() {
@@ -17,15 +18,42 @@ export default function LecturerCoursesPage() {
   const [form, setForm] = useState({ courseTitle: '', courseCode: '', defaultDuration: 60, phase1Marks: 3, phase2Marks: 2 });
   const durations = [30, 45, 60, 90, 120];
 
+  const [activeSessions, setActiveSessions] = useState<Record<string, Session | null>>({});
+
   const load = async () => {
-    if (!user?.userId) return;
+    if (!user?.userId) return [];
     setIsLoading(true);
-    try { setCourses(await getLecturerCourses(user.userId)); }
-    catch (e) { console.error(e); }
+    try { 
+      const fetchedCourses = await getLecturerCourses(user.userId);
+      setCourses(fetchedCourses);
+      return fetchedCourses;
+    }
+    catch (e) { console.error(e); return []; }
     finally { setIsLoading(false); }
   };
 
-  useEffect(() => { load(); }, [user?.userId]);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  useEffect(() => { 
+    let isMounted = true;
+    const sessionUnsubs: (() => void)[] = [];
+
+    load().then(fetchedCourses => {
+      if (!isMounted) return;
+      fetchedCourses.forEach(course => {
+        const unsub = subscribeToActiveSessionForCourse(course.courseId, (session) => {
+          if (!isMounted) return;
+          setActiveSessions(prev => ({ ...prev, [course.courseId]: session }));
+        });
+        sessionUnsubs.push(unsub);
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      sessionUnsubs.forEach(unsub => unsub());
+    };
+  }, [user?.userId, reloadTrigger]);
 
   const handleCreate = async () => {
     if (!form.courseTitle.trim()) { setFormError('Course title is required'); return; }
@@ -36,7 +64,7 @@ export default function LecturerCoursesPage() {
       await createCourse({ courseTitle: form.courseTitle, courseCode: form.courseCode, lecturerId: user.userId, lecturerName: user.name, defaultDuration: form.defaultDuration, phase1Marks: form.phase1Marks, phase2Marks: form.phase2Marks });
       setShowModal(false);
       setForm({ courseTitle: '', courseCode: '', defaultDuration: 60, phase1Marks: 3, phase2Marks: 2 });
-      await load();
+      setReloadTrigger(prev => prev + 1);
     } catch (e: any) { setFormError(e.message || 'Failed to create course'); }
     finally { setCreating(false); }
   };
@@ -76,7 +104,15 @@ export default function LecturerCoursesPage() {
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
                 <div className="pl-4 flex items-center justify-between gap-3">
                   <div className="flex-1">
-                    <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{course.courseCode}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{course.courseCode}</span>
+                      {activeSessions[course.courseId] && activeSessions[course.courseId]?.status !== 'ended' && (
+                        <span className="bg-primary text-on-primary px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                          <span className="w-1.5 h-1.5 bg-secondary-fixed rounded-full animate-pulse inline-block" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase">Live</span>
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-base font-semibold text-on-surface mt-1">{course.courseTitle}</h3>
                     <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1">
                       <span className="material-symbols-outlined text-base">schedule</span>
