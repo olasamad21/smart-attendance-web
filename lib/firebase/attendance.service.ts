@@ -37,6 +37,7 @@ export async function recordPhase1(data: {
     totalScore: data.phase1Score,
     remark: 'Present',
     timestamp: serverTimestamp(),
+    phase1VerificationMethod: 'face_gps'
   };
   await setDoc(doc(db, 'attendance', attendanceId), record);
   return { ...record, phase1Time: new Date() as any };
@@ -73,7 +74,103 @@ export async function recordPhase2(
     phase2GpsDistance: data.gpsDistance,
     totalScore,
     remark,
+    phase2VerificationMethod: 'face_gps'
   });
+}
+
+export async function recordManualOverride(data: {
+  sessionId: string;
+  courseId: string;
+  studentId: string;
+  studentName: string;
+  matricNumber: string;
+  activePhase: 'phase1_open' | 'phase2_open';
+  phase1Max: number;
+  phase2Max: number;
+  lecturerId: string;
+  reason: string | null;
+}): Promise<void> {
+  const q = query(
+    collection(db, 'attendance'),
+    where('sessionId', '==', data.sessionId),
+    where('studentId', '==', data.studentId)
+  );
+  const snap = await getDocs(q);
+  const existing = snap.empty ? null : snap.docs[0];
+
+  if (data.activePhase === 'phase1_open') {
+    if (existing) {
+      const existingData = existing.data() as AttendanceRecord;
+      if (existingData.phase1Score > 0 || existingData.phase1VerificationMethod) {
+        throw new Error("Student already has a Phase 1 record.");
+      }
+    }
+    const attendanceId = doc(collection(db, 'attendance')).id;
+    await setDoc(doc(db, 'attendance', attendanceId), {
+      attendanceId,
+      sessionId: data.sessionId,
+      courseId: data.courseId,
+      studentId: data.studentId,
+      studentName: data.studentName,
+      matricNumber: data.matricNumber,
+      phase1Score: data.phase1Max,
+      phase1Status: 'present',
+      phase1Time: serverTimestamp(),
+      phase2Score: 0,
+      phase2Status: 'absent',
+      phase2Time: null,
+      totalScore: data.phase1Max,
+      remark: 'Present (Manual)',
+      timestamp: serverTimestamp(),
+      phase1VerificationMethod: 'manual_override',
+      overriddenBy: data.lecturerId,
+      overrideReason: data.reason,
+      overrideTimestamp: serverTimestamp(),
+    });
+  } else if (data.activePhase === 'phase2_open') {
+    if (existing) {
+      const existingData = existing.data() as AttendanceRecord;
+      if (existingData.phase2Score > 0 || existingData.phase2VerificationMethod) {
+        throw new Error("Student already has a Phase 2 record.");
+      }
+      await updateDoc(doc(db, 'attendance', existing.id), {
+        phase2Score: data.phase2Max,
+        phase2Status: 'present',
+        phase2Time: serverTimestamp(),
+        totalScore: (existingData.phase1Score || 0) + data.phase2Max,
+        remark: (existingData.phase1Score > 0) ? 'Present (Manual)' : 'Late (Manual)',
+        phase2VerificationMethod: 'manual_override',
+        overriddenBy: data.lecturerId,
+        overrideReason: data.reason,
+        overrideTimestamp: serverTimestamp(),
+      });
+    } else {
+      const attendanceId = doc(collection(db, 'attendance')).id;
+      await setDoc(doc(db, 'attendance', attendanceId), {
+        attendanceId,
+        sessionId: data.sessionId,
+        courseId: data.courseId,
+        studentId: data.studentId,
+        studentName: data.studentName,
+        matricNumber: data.matricNumber,
+        phase1Score: 0,
+        phase1Status: 'absent',
+        phase1Time: null,
+        phase2Score: data.phase2Max,
+        phase2Status: 'present',
+        phase2Time: serverTimestamp(),
+        totalScore: data.phase2Max,
+        remark: 'Late (Manual)',
+        timestamp: serverTimestamp(),
+        phase2VerificationMethod: 'manual_override',
+        overriddenBy: data.lecturerId,
+        overrideReason: data.reason,
+        overrideTimestamp: serverTimestamp(),
+      });
+    }
+  } else {
+    throw new Error("Session is not currently active for overrides.");
+  }
 }
 
 export async function awardFullMarksAndEnd(sessionId: string, phase2MaxScore: number): Promise<void> {

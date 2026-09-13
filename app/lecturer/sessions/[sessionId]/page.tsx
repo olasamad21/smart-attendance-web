@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { subscribeToSession, endSession, syncSessionPhase, startPhase2Early } from '@/lib/firebase/sessions.service';
-import { subscribeToSessionAttendance, getSessionAttendance, awardFullMarksAndEnd } from '@/lib/firebase/attendance.service';
+import { subscribeToSessionAttendance, getSessionAttendance, awardFullMarksAndEnd, recordManualOverride } from '@/lib/firebase/attendance.service';
 import { getEnrolledStudents } from '@/lib/firebase/courses.service';
+import { useAuthStore } from '@/store/auth.store';
 import { Session, AttendanceRecord, UserProfile } from '@/types';
 import { formatCountdown, getPhaseInfo } from '@/lib/utils/session.utils';
 import { generateSessionCSV } from '@/lib/utils/csv.utils';
@@ -28,6 +29,13 @@ export default function LiveSessionPage() {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showPhase2Dialog, setShowPhase2Dialog] = useState(false);
   const [phase2DurationInput, setPhase2DurationInput] = useState('2');
+
+  // Manual Override State
+  const { user } = useAuthStore();
+  const [overrideStudent, setOverrideStudent] = useState<UserProfile | AttendanceRecord | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [overrideError, setOverrideError] = useState('');
+  const [isOverriding, setIsOverriding] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -84,6 +92,44 @@ export default function LiveSessionPage() {
       await startPhase2Early(sessionId, Number(phase2DurationInput));
     } catch (e) { console.error(e); }
     finally { setEnding(false); }
+  };
+
+  const handleRowClick = (studentOrRecord: UserProfile | AttendanceRecord) => {
+    if (session?.status !== 'phase1_open' && session?.status !== 'phase2_open') return;
+    setOverrideStudent(studentOrRecord);
+    setOverrideReason('');
+    setOverrideError('');
+  };
+
+  const handleOverrideSubmit = async () => {
+    if (!overrideStudent || !session || !user) return;
+    setIsOverriding(true);
+    setOverrideError('');
+    
+    try {
+      const studentId = 'userId' in overrideStudent ? overrideStudent.userId : overrideStudent.studentId;
+      const studentName = 'name' in overrideStudent ? overrideStudent.name : overrideStudent.studentName;
+      const matricNumber = overrideStudent.matricNumber || '';
+
+      await recordManualOverride({
+        sessionId,
+        courseId: session.courseId,
+        studentId,
+        studentName,
+        matricNumber,
+        activePhase: session.status as 'phase1_open' | 'phase2_open',
+        phase1Max: 3, // Fallback if course maxes aren't handy, but we should probably fetch the course
+        phase2Max: 2, 
+        lecturerId: user.userId,
+        reason: overrideReason.trim() || null,
+      });
+      
+      setOverrideStudent(null);
+    } catch (e: any) {
+      setOverrideError(e.message || 'Failed to record manual override.');
+    } finally {
+      setIsOverriding(false);
+    }
   };
 
   const getStatusColor = () => {
@@ -295,7 +341,11 @@ export default function LiveSessionPage() {
               ) : (
                 <div className="divide-y divide-surface-variant max-h-80 overflow-y-auto">
                   {attendees.map((a, i) => (
-                    <div key={a.attendanceId} className="flex items-center gap-3 p-3">
+                    <div 
+                      key={a.attendanceId} 
+                      onClick={() => handleRowClick(a)}
+                      className={`flex items-center gap-3 p-3 ${(session?.status === 'phase1_open' || session?.status === 'phase2_open') ? 'cursor-pointer hover:bg-surface-container-low transition-colors' : ''}`}
+                    >
                       <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary text-xs font-bold">
                         {i + 1}
                       </div>
@@ -303,15 +353,61 @@ export default function LiveSessionPage() {
                         <p className="text-sm font-medium text-on-surface">{a.studentName}</p>
                         <p className="text-xs text-on-surface-variant">{a.matricNumber}</p>
                       </div>
-                      <div className="flex gap-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.phase1Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>P1</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.phase2Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>P2</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${a.phase1Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>
+                          P1
+                          {a.phase1VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
+                        </span>
+                        {session?.phase2Duration && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${a.phase2Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>
+                            P2
+                            {a.phase2VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
+
+            {/* Not Checked In list */}
+            {absent.length > 0 && (
+              <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden mt-6">
+                <div className="flex items-center justify-between p-4 border-b border-surface-variant">
+                  <h3 className="text-sm font-semibold text-on-surface">Not Checked In</h3>
+                  <span className="bg-surface-variant text-on-surface-variant text-xs font-bold px-2 py-0.5 rounded-full">{absent.length}</span>
+                </div>
+                <div className="divide-y divide-surface-variant max-h-80 overflow-y-auto">
+                  {absent.map((s, i) => (
+                    <div 
+                      key={s.userId} 
+                      onClick={() => handleRowClick(s)}
+                      className={`flex items-center gap-3 p-3 ${(session?.status === 'phase1_open' || session?.status === 'phase2_open') ? 'cursor-pointer hover:bg-surface-container-low transition-colors' : 'opacity-60'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant text-xs font-bold">
+                        {attendees.length + i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-on-surface">{s.name}</p>
+                        <p className="text-xs text-on-surface-variant">{s.matricNumber || '—'}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-surface-container text-on-surface-variant">
+                          P1
+                        </span>
+                        {session?.phase2Duration && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-surface-container text-on-surface-variant">
+                            P2
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -366,11 +462,13 @@ export default function LiveSessionPage() {
                           <p className="text-xs font-medium text-on-surface truncate">{a.studentName}</p>
                           <p className="text-[10px] text-on-surface-variant truncate">{a.matricNumber}</p>
                         </div>
-                        <span className={`text-xs text-center font-semibold ${a.phase1Score > 0 ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}>
+                        <span className={`text-xs text-center font-semibold flex items-center justify-center gap-0.5 ${a.phase1Score > 0 ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}>
                           {a.phase1Score}
+                          {a.phase1VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
                         </span>
-                        <span className={`text-xs text-center font-semibold ${a.phase2Score > 0 ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}>
+                        <span className={`text-xs text-center font-semibold flex items-center justify-center gap-0.5 ${a.phase2Score > 0 ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}>
                           {a.phase2Score}
+                          {a.phase2VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
                         </span>
                         <span className="text-xs text-center font-bold text-on-surface">{a.totalScore}</span>
                       </div>
@@ -492,6 +590,73 @@ export default function LiveSessionPage() {
               >
                 <span className="material-symbols-outlined">play_arrow</span>
                 Start Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Override Modal */}
+      {overrideStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-warning-container text-on-warning-container flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">edit_note</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-on-surface leading-tight">Manual Override</h3>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{session?.status === 'phase1_open' ? 'Phase 1 Check In' : 'Phase 2 Check Out'}</p>
+              </div>
+            </div>
+
+            <div className="bg-surface-container/50 rounded-xl p-3 mb-4">
+              <p className="text-sm font-bold text-on-surface">{'name' in overrideStudent ? overrideStudent.name : overrideStudent.studentName}</p>
+              <p className="text-xs text-on-surface-variant">{overrideStudent.matricNumber || 'No Matric Number'}</p>
+            </div>
+
+            <p className="text-xs text-on-surface-variant mb-4 flex items-start gap-2 bg-error-container/20 text-on-surface p-2 rounded-lg border border-error/20">
+              <span className="material-symbols-outlined text-error text-[14px]">info</span>
+              This action grants credit without camera/GPS verification and is permanently logged in the audit trail.
+            </p>
+
+            <div className="mb-6">
+              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">Reason (optional)</label>
+              <input
+                type="text"
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="e.g. Phone died, Camera broken"
+                className="w-full bg-surface-container h-12 rounded-xl px-4 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-warning transition-all"
+                disabled={isOverriding}
+              />
+            </div>
+
+            {overrideError && (
+              <p className="text-xs text-error font-medium mb-4 text-center">{overrideError}</p>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleOverrideSubmit}
+                disabled={isOverriding}
+                className="w-full bg-warning text-on-warning rounded-xl h-12 font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isOverriding ? (
+                  <div className="w-5 h-5 border-2 border-on-warning border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                    Mark Present
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setOverrideStudent(null)}
+                disabled={isOverriding}
+                className="w-full bg-transparent text-on-surface rounded-xl h-12 font-semibold active:scale-95 transition-all"
+              >
+                Cancel
               </button>
             </div>
           </div>
