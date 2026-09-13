@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body style={{ fontFamily: 'Inter, sans-serif' }}>
+      <body className="bg-background text-on-background min-h-[100dvh]" style={{ fontFamily: 'Inter, sans-serif' }}>
         <AuthProvider>
           {children}
         </AuthProvider>
