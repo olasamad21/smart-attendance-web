@@ -77,10 +77,16 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
         {/* RIGHT SIDE */}
         {!showBack && user && (
           <div className="flex items-center shrink-0 gap-2">
-            {/* Future Dark Mode Toggle space */}
-            <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90 ml-1">
-              <span className="text-on-primary text-xs font-bold">{initials}</span>
-            </Link>
+            {/* Future Dark Mode Toggle */}
+            <button className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all">
+              <span className="material-symbols-outlined text-[20px]">light_mode</span>
+            </button>
+            
+            {title !== 'Profile' && (
+              <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
+                <span className="text-on-primary text-xs font-bold">{initials}</span>
+              </Link>
+            )}
           </div>
         )}
       </div>
