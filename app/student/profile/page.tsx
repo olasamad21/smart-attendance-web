@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { logoutUser } from '@/lib/firebase/auth.service';
 import { checkFaceEnrolled } from '@/lib/api/face.api';
 import TopAppBar from '@/components/layout/TopAppBar';
+import AppDialog from '@/components/ui/AppDialog';
 
 export default function StudentProfilePage() {
   const { user, clearUser } = useAuthStore();
@@ -13,6 +14,8 @@ export default function StudentProfilePage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [faceEnrolled, setFaceEnrolled] = useState(false);
   const [checkingFace, setCheckingFace] = useState(true);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
 
   useEffect(() => {
     if (user?.userId) {
@@ -24,7 +27,7 @@ export default function StudentProfilePage() {
   }, [user?.userId]);
 
   const handleLogout = async () => {
-    if (!confirm('Sign out of EduVerify?')) return;
+    setShowSignOutDialog(false);
     setLoggingOut(true);
     await logoutUser();
     clearUser();
@@ -67,7 +70,7 @@ export default function StudentProfilePage() {
         
         {/* Face Verification Setup */}
         {!checkingFace && faceEnrolled ? (
-          <button disabled onClick={() => alert('Face verification is already complete!')}
+          <button onClick={() => setShowFaceDialog(true)}
             className="w-full h-12 bg-surface-container-low text-on-surface-variant rounded-full text-sm font-semibold flex items-center justify-center gap-2 mb-4 mt-4 opacity-70 cursor-not-allowed">
             <span className="material-symbols-outlined text-xl text-primary" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
             Face Verification Complete
@@ -81,12 +84,34 @@ export default function StudentProfilePage() {
         )}
 
         {/* Sign out */}
-        <button onClick={handleLogout} disabled={loggingOut}
+        <button onClick={() => setShowSignOutDialog(true)} disabled={loggingOut}
           className="w-full h-12 border-2 border-error/30 text-error rounded-full text-sm font-semibold active:scale-95 disabled:opacity-60 transition-all flex items-center justify-center gap-2 mt-4">
           <span className="material-symbols-outlined text-xl">logout</span>
           {loggingOut ? 'Signing out...' : 'Sign Out'}
         </button>
       </main>
+
+      {/* Sign Out Confirmation Dialog */}
+      <AppDialog
+        open={showSignOutDialog}
+        onClose={() => setShowSignOutDialog(false)}
+        icon="logout"
+        variant="destructive"
+        title="Sign out?"
+        description="You will need to log in again to access your account."
+        confirmLabel="Sign Out"
+        onConfirm={handleLogout}
+      />
+
+      {/* Face Already Enrolled Dialog */}
+      <AppDialog
+        open={showFaceDialog}
+        onClose={() => setShowFaceDialog(false)}
+        icon="check_circle"
+        variant="info"
+        title="Already complete"
+        description="Your face is already registered for attendance verification."
+      />
     </div>
   );
 }

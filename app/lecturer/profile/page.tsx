@@ -4,14 +4,16 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { logoutUser } from '@/lib/firebase/auth.service';
 import TopAppBar from '@/components/layout/TopAppBar';
+import AppDialog from '@/components/ui/AppDialog';
 
 export default function LecturerProfilePage() {
   const { user, clearUser } = useAuthStore();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   const handleLogout = async () => {
-    if (!confirm('Sign out of EduVerify?')) return;
+    setShowSignOutDialog(false);
     setLoggingOut(true);
     await logoutUser();
     clearUser();
@@ -22,7 +24,7 @@ export default function LecturerProfilePage() {
 
   return (
     <div className="bg-background">
-      <TopAppBar title="Profile" />
+      <TopAppBar title="Profile" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
 
         {/* Avatar */}
@@ -51,12 +53,24 @@ export default function LecturerProfilePage() {
         </div>
 
         {/* Sign out */}
-        <button onClick={handleLogout} disabled={loggingOut}
+        <button onClick={() => setShowSignOutDialog(true)} disabled={loggingOut}
           className="w-full h-12 border-2 border-error/30 text-error rounded-full text-sm font-semibold active:scale-95 disabled:opacity-60 transition-all flex items-center justify-center gap-2 mt-4">
           <span className="material-symbols-outlined text-xl">logout</span>
           {loggingOut ? 'Signing out...' : 'Sign Out'}
         </button>
       </main>
+
+      {/* Sign Out Confirmation Dialog */}
+      <AppDialog
+        open={showSignOutDialog}
+        onClose={() => setShowSignOutDialog(false)}
+        icon="logout"
+        variant="destructive"
+        title="Sign out?"
+        description="You will need to log in again to access your account."
+        confirmLabel="Sign Out"
+        onConfirm={handleLogout}
+      />
     </div>
   );
 }

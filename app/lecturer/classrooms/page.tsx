@@ -5,6 +5,7 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { getClassrooms, createClassroom, deleteClassroom } from '@/lib/firebase/classrooms.service';
 import { Classroom } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import AppDialog from '@/components/ui/AppDialog';
 import { getCurrentPosition } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
 
@@ -22,6 +23,7 @@ export default function ClassroomsPage() {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [form, setForm] = useState({ name: '', latitude: '', longitude: '', radius: '100' });
   const [error, setError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -68,8 +70,13 @@ export default function ClassroomsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
-    await deleteClassroom(id);
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteClassroom(deleteTarget.id);
+    setDeleteTarget(null);
     await load();
   };
 
@@ -197,6 +204,17 @@ export default function ClassroomsPage() {
           </div>
         </div>
       )}
+      {/* Delete Classroom Dialog */}
+      <AppDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        icon="delete"
+        variant="destructive"
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="This classroom will be permanently removed. Any sessions using it will not be affected."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
