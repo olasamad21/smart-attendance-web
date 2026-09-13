@@ -89,9 +89,7 @@ export default function FaceEnrollPage() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Mirror the image (front camera is mirrored)
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
+      // Capture the true un-mirrored frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL('image/jpeg', 0.95);
       
@@ -210,7 +208,7 @@ export default function FaceEnrollPage() {
   if (state === 'camera' || state === 'scanning') {
     return (
       <div className="w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto" style={{ height: 'calc(100dvh - 64px)' }}>
-        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
+        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover -scale-x-100" autoPlay muted playsInline />
         <canvas ref={canvasRef} className="hidden" />
 
         <div className="absolute inset-0 z-10 flex flex-col">
