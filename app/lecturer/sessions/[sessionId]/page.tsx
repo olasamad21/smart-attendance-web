@@ -13,6 +13,28 @@ import { generateSessionPDF } from '@/lib/utils/pdf.utils';
 import { calculateGpsDistance } from '@/lib/utils/gps.utils';
 import EmptyState from '@/components/ui/EmptyState';
 
+const GPS_FLAG_LABELS: Record<string, string> = {
+  accuracy_missing: 'device did not report GPS accuracy',
+  accuracy_too_precise: 'GPS accuracy unrealistically precise (common with fake-location apps)',
+  low_accuracy: 'low GPS accuracy (passed using the error margin)',
+  coordinates_too_round: 'coordinates suspiciously rounded',
+  impossible_travel: 'moved impossibly fast since the previous check-in',
+};
+
+/** Review-only warning when the server flagged a student's location. */
+function GpsFlagBadge({ record }: { record: AttendanceRecord }) {
+  const flags = Array.from(new Set([...(record.gpsFlags ?? []), ...(record.phase2GpsFlags ?? [])]))
+    .filter(f => f !== 'low_accuracy');
+  if (flags.length === 0) return null;
+  const detail = flags.map(f => GPS_FLAG_LABELS[f] ?? f).join('; ');
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-error mt-0.5" title={`Location check: ${detail}`}>
+      <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>location_off</span>
+      Review location
+    </span>
+  );
+}
+
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const router = useRouter();
@@ -352,6 +374,7 @@ export default function LiveSessionPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-on-surface">{a.studentName}</p>
                         <p className="text-xs text-on-surface-variant">{a.matricNumber}</p>
+                        <GpsFlagBadge record={a} />
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${a.phase1Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>
@@ -461,6 +484,7 @@ export default function LiveSessionPage() {
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-on-surface truncate">{a.studentName}</p>
                           <p className="text-[10px] text-on-surface-variant truncate">{a.matricNumber}</p>
+                          <GpsFlagBadge record={a} />
                         </div>
                         <span className={`text-xs text-center font-semibold flex items-center justify-center gap-0.5 ${a.phase1Score > 0 ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}>
                           {a.phase1Score}

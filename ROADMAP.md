@@ -59,11 +59,11 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 
 | # | Item | Where | Status |
 |---|------|-------|--------|
-| 3.1 | **Best-fix sampling.** Use `watchPosition` for a few seconds, keep the most accurate reading; live "Improving accuracy… ±35m" UI. | `lib/utils/gps.utils.ts`, verify page | ☐ |
-| 3.2 | **Accuracy-aware check.** Pass if `distance − accuracy ≤ radius`; reject fixes worse than ~±100m with guidance ("move near a window") instead of silent pass/fail. | `gps.utils.ts` | ☐ |
-| 3.3 | **Lecturer "Set from my location".** Average several readings while standing in the room to place the pin; suggest a radius from the observed accuracy. | `app/lecturer/classrooms`, `ClassroomMap.tsx` | ☐ |
+| 3.1 | **Best-fix sampling.** Use `watchPosition` for a few seconds, keep the most accurate reading; live "Improving accuracy… ±35m" UI. | `lib/utils/gps.utils.ts`, verify page | ☑ |
+| 3.2 | **Accuracy-aware check.** Pass if `distance − accuracy ≤ radius`; reject fixes worse than ~±100m with guidance ("move near a window") instead of silent pass/fail. | `gps.utils.ts` | ☑ |
+| 3.3 | **Lecturer "Set from my location".** Average several readings while standing in the room to place the pin; suggest a radius from the observed accuracy. | `app/lecturer/classrooms`, `ClassroomMap.tsx` | ☑ |
 | 3.4 | **Server-side distance validation** as part of the Phase 1.1 attendance write. | backend | ☑ |
-| 3.5 | **Suspicious-location flags** (accuracy = 0 / perfectly round values, impossible travel between sessions) shown to the lecturer for review — flag, don't hard-block. | backend, live session page | ☐ |
+| 3.5 | **Suspicious-location flags** (accuracy = 0 / perfectly round values, impossible travel between sessions) shown to the lecturer for review — flag, don't hard-block. | backend, live session page | ☑ |
 
 ## Phase 4 — Bug Fixes
 

@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { getActiveSessionForCourse, getSessionsForCourse, subscribeToSession } from '@/lib/firebase/sessions.service';
 import { markAttendance } from '@/lib/api/face.api';
-import { getCurrentPosition, calculateDistance, isWithinRadius } from '@/lib/utils/gps.utils';
+import { getBestPosition, checkProximity } from '@/lib/utils/gps.utils';
 import { resolveSessionPhase } from '@/lib/utils/session.utils';
 import { Session } from '@/types';
 import { useFaceTracker } from '@/hooks/useFaceTracker';
@@ -26,6 +26,7 @@ export default function VerifyPage() {
   const [gpsStatus, setGpsStatus] = useState<'checking' | 'confirmed' | 'failed'>('checking');
   const [gpsDistance, setGpsDistance] = useState(0);
   const [gpsError, setGpsError] = useState('');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const positionRef = useRef<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [confidence, setConfidence] = useState(0);
@@ -71,17 +72,22 @@ export default function VerifyPage() {
   const checkGPS = async (s: Session) => {
     setStep('gps');
     setGpsStatus('checking');
+    setGpsAccuracy(null);
     try {
-      const pos = await getCurrentPosition();
+      // Watch GPS for a few seconds and keep the most accurate fix.
+      const pos = await getBestPosition({ onUpdate: fix => setGpsAccuracy(Math.round(fix.accuracy)) });
       positionRef.current = pos;
-      const dist = calculateDistance(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng);
-      setGpsDistance(Math.round(dist));
-      if (isWithinRadius(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng, s.classroomRadius)) {
+      setGpsAccuracy(Math.round(pos.accuracy));
+      const result = checkProximity(pos, {
+        lat: s.classroomLat, lng: s.classroomLng, radius: s.classroomRadius, name: s.classroomName,
+      });
+      setGpsDistance(result.distance);
+      if (result.ok) {
         setGpsStatus('confirmed');
         setTimeout(() => startCamera(), 1000);
       } else {
         setGpsStatus('failed');
-        setGpsError(`You are ${Math.round(dist)}m away (max ${s.classroomRadius}m allowed)`);
+        setGpsError(result.message);
       }
     } catch (e: any) {
       setGpsStatus('failed');
@@ -235,8 +241,12 @@ export default function VerifyPage() {
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-pulse">
             <span className="material-symbols-outlined text-primary text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>location_searching</span>
           </div>
-          <h2 className="text-xl font-bold text-on-surface mb-2">Getting your location...</h2>
-          <p className="text-sm text-on-surface-variant">Please allow location access when prompted</p>
+          <h2 className="text-xl font-bold text-on-surface mb-2">
+            {gpsAccuracy === null ? 'Getting your location...' : 'Improving accuracy...'}
+          </h2>
+          <p className="text-sm text-on-surface-variant">
+            {gpsAccuracy === null ? 'Please allow location access when prompted' : `Current accuracy ±${gpsAccuracy}m`}
+          </p>
         </>
       )}
       {gpsStatus === 'confirmed' && (
@@ -245,7 +255,7 @@ export default function VerifyPage() {
             <span className="material-symbols-outlined text-primary text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>location_on</span>
           </div>
           <h2 className="text-xl font-bold text-on-surface mb-2">Location Confirmed</h2>
-          <p className="text-sm text-on-surface-variant">You are {gpsDistance}m from the classroom. Starting camera...</p>
+          <p className="text-sm text-on-surface-variant">You are {gpsDistance}m from the classroom{gpsAccuracy !== null ? ` (±${gpsAccuracy}m)` : ''}. Starting camera...</p>
         </>
       )}
       {gpsStatus === 'failed' && (

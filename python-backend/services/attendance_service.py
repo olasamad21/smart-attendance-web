@@ -19,6 +19,11 @@ MAX_FACE_ATTEMPTS = 3       # face mismatches allowed per student, per session p
 DEFAULT_PHASE1_MARKS = 3
 DEFAULT_PHASE2_MARKS = 2
 
+# Location rules — keep in sync with lib/utils/gps.utils.ts.
+MAX_ACCURACY_M = 100        # fixes less precise than this are rejected (indoor Wi-Fi guesses)
+MAX_TOLERANCE_M = 50        # reported GPS error granted as tolerance, capped
+IMPOSSIBLE_SPEED_MPS = 83   # ~300 km/h between two check-ins = flagged
+
 
 def attendance_doc_id(session_id: str, student_id: str) -> str:
     """Deterministic id — one record per student per session, so duplicates are impossible."""
@@ -63,6 +68,59 @@ def resolve_open_phase(session: dict, now: datetime | None = None) -> str | None
     if now < p2_end:
         return "phase2"
     return "phase2" if now <= p2_end + grace else None
+
+
+def check_location(distance: float, accuracy: float | None, radius: float) -> str | None:
+    """None if acceptable, else 'low_accuracy' | 'out_of_range'."""
+    if accuracy is not None and accuracy > MAX_ACCURACY_M:
+        return "low_accuracy"
+    tolerance = min(accuracy or 0, MAX_TOLERANCE_M)
+    return "out_of_range" if distance - tolerance > radius else None
+
+
+def _decimals(x: float) -> int:
+    text = repr(float(x))
+    return len(text.split(".")[1].rstrip("0")) if "." in text else 0
+
+
+def gps_flags(latitude: float, longitude: float, accuracy: float | None,
+              previous: dict | None = None, now: datetime | None = None) -> list[str]:
+    """
+    Signs of a faked location. These never block a check-in — they are stored on the record
+    so the lecturer can review them.
+    """
+    flags = []
+    if accuracy is None:
+        flags.append("accuracy_missing")
+    elif accuracy < 2:
+        flags.append("accuracy_too_precise")      # mock-location apps often report 0–1 m
+    elif accuracy > MAX_TOLERANCE_M:
+        flags.append("low_accuracy")
+    if _decimals(latitude) <= 4 and _decimals(longitude) <= 4:
+        flags.append("coordinates_too_round")     # real GPS fixes carry 6+ decimals
+    if previous and previous.get("point") and previous.get("time"):
+        now = now or datetime.now(timezone.utc)
+        seconds = max((now - previous["time"]).total_seconds(), 1)
+        moved = haversine_m(latitude, longitude, previous["point"]["lat"], previous["point"]["lng"])
+        if moved > 2000 and moved / seconds > IMPOSSIBLE_SPEED_MPS:
+            flags.append("impossible_travel")
+    return flags
+
+
+def _previous_location(db, student_id: str, exclude_session: str) -> dict | None:
+    """Most recent stored check-in position for this student from another session."""
+    docs = (db.collection("attendance")
+            .where(filter=FieldFilter("studentId", "==", student_id)).get())
+    best = None
+    for d in docs:
+        r = d.to_dict() or {}
+        if r.get("sessionId") == exclude_session:
+            continue
+        for point_key, time_key in (("gpsPoint", "phase1Time"), ("phase2GpsPoint", "phase2Time")):
+            if r.get(point_key) and r.get(time_key):
+                if best is None or r[time_key] > best["time"]:
+                    best = {"point": r[point_key], "time": r[time_key]}
+    return best
 
 
 def _find_record(db, session_id: str, student_id: str):
@@ -113,9 +171,17 @@ def mark_attendance(uid: str, session_id: str, image: str, latitude: float, long
     # 4. Location — computed here, never trusted from the client.
     distance = round(haversine_m(latitude, longitude, session["classroomLat"], session["classroomLng"]))
     radius = session.get("classroomRadius", 100)
-    if distance > radius:
-        return _result("out_of_range", f"You are {distance}m away (max {radius}m allowed).",
+    location_problem = check_location(distance, accuracy, radius)
+    if location_problem == "low_accuracy":
+        return _result("out_of_range",
+                       f"Your location is too imprecise (±{round(accuracy)}m). Move near a window or step outside.",
                        distance=distance, radius=radius, phase=phase)
+    if location_problem == "out_of_range":
+        return _result("out_of_range", f"You are about {distance}m away (must be within {radius}m).",
+                       distance=distance, radius=radius, phase=phase)
+    flags = gps_flags(latitude, longitude, accuracy, _previous_location(db, uid, session_id))
+    # ~11 m precision: enough for impossible-travel checks, not a precise track of the student.
+    point = {"lat": round(latitude, 4), "lng": round(longitude, 4)}
 
     # 5. Cheap state checks before running the (expensive) face model.
     existing = _find_record(db, session_id, uid)
@@ -175,6 +241,8 @@ def mark_attendance(uid: str, session_id: str, image: str, latitude: float, long
             "faceMatchConfidence": confidence,
             "gpsDistance": distance,
             "gpsAccuracy": accuracy,
+            "gpsFlags": flags,
+            "gpsPoint": point,
             "phase2Score": 0,
             "phase2Time": None,
             "phase2Status": "absent",
@@ -210,6 +278,8 @@ def mark_attendance(uid: str, session_id: str, image: str, latitude: float, long
             "phase2Confidence": confidence,
             "phase2GpsDistance": distance,
             "phase2GpsAccuracy": accuracy,
+            "phase2GpsFlags": flags,
+            "phase2GpsPoint": point,
             "totalScore": (current.get("phase1Score") or 0) + p2_marks,
             "remark": "Present",
             "phase2VerificationMethod": "face_gps",

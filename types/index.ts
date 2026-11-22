@@ -82,6 +82,11 @@ export interface AttendanceRecord {
   phase2Time: any | null;
   phase2Confidence?: number;
   phase2GpsDistance?: number;
+  gpsAccuracy?: number | null;
+  phase2GpsAccuracy?: number | null;
+  /** Server-detected signs of a faked location (review only, never blocking). */
+  gpsFlags?: string[];
+  phase2GpsFlags?: string[];
   totalScore: number;
   remark: string;
   timestamp: any;

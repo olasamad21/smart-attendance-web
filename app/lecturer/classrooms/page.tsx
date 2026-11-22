@@ -6,7 +6,7 @@ import { getClassrooms, createClassroom, deleteClassroom } from '@/lib/firebase/
 import { Classroom } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 import AppDialog from '@/components/ui/AppDialog';
-import { getCurrentPosition } from '@/lib/utils/gps.utils';
+import { averagePosition, suggestRadius } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), { 
@@ -21,6 +21,7 @@ export default function ClassroomsPage() {
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [locationInfo, setLocationInfo] = useState('');
   const [form, setForm] = useState({ name: '', latitude: '', longitude: '', radius: '100' });
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -41,13 +42,27 @@ export default function ClassroomsPage() {
     }
   }, [showModal]);
 
+  // Average ~12 s of readings while the lecturer stands in the room, then suggest a radius
+  // that covers the GPS error students will see there.
   async function handleGetLocation() {
     setGettingLocation(true);
+    setError('');
+    setLocationInfo('Measuring your location — stay where you are...');
     try {
-      const pos = await getCurrentPosition();
-      setForm(f => ({ ...f, latitude: pos.latitude.toFixed(6), longitude: pos.longitude.toFixed(6) }));
+      const pos = await averagePosition({
+        durationMs: 12000,
+        onUpdate: cur => setLocationInfo(`Measuring... ${cur.samples} reading${cur.samples === 1 ? '' : 's'}, ±${Math.round(cur.accuracy)}m`),
+      });
+      const radius = suggestRadius(pos.accuracy);
+      setForm(f => ({ ...f, latitude: pos.latitude.toFixed(6), longitude: pos.longitude.toFixed(6), radius: radius.toString() }));
+      setLocationInfo(
+        `Pin placed from ${pos.samples} reading${pos.samples === 1 ? '' : 's'} (±${Math.round(pos.accuracy)}m). ` +
+        `Radius set to ${radius}m — drag the slider to adjust.` +
+        (pos.accuracy > 40 ? ' Accuracy is low indoors; move near a window and measure again for a tighter pin.' : ''),
+      );
     } catch (e: any) {
       setError(e.message);
+      setLocationInfo('');
     } finally { setGettingLocation(false); }
   };
 
@@ -64,6 +79,7 @@ export default function ClassroomsPage() {
       });
       setShowModal(false);
       setForm({ name: '', latitude: '', longitude: '', radius: '100' });
+      setLocationInfo('');
       await load();
     } catch (e: any) { setError(e.message); }
     finally { setCreating(false); }
@@ -170,8 +186,11 @@ export default function ClassroomsPage() {
                   className="w-full h-12 border border-primary text-primary rounded-lg text-sm font-semibold active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-lg">my_location</span>
-                  {gettingLocation ? 'Getting location...' : 'Find My Location'}
+                  {gettingLocation ? 'Measuring location...' : 'Use My Current Location'}
                 </button>
+                {locationInfo && (
+                  <p className="text-xs text-on-surface-variant -mt-2" aria-live="polite">{locationInfo}</p>
+                )}
                 
                 <ClassroomMap 
                   center={{ lat: parseFloat(form.latitude) || 0, lng: parseFloat(form.longitude) || 0 }}
