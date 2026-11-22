@@ -42,7 +42,7 @@ export default function StudentDashboard() {
 
     Promise.all([
       getStudentCourses(user.userId),
-      checkFaceEnrolled(user.userId).catch(() => ({ enrolled: false })),
+      checkFaceEnrolled().catch(() => ({ enrolled: false })),
     ]).then(async ([courseData, faceStatus]) => {
       if (!isMounted) return;
       setCourses(courseData);

@@ -26,7 +26,7 @@ export default function FaceEnrollPage() {
       setIsChecking(false);
       return;
     }
-    checkFaceEnrolled(user.userId)
+    checkFaceEnrolled()
       .then(res => {
         if (res.enrolled) setState('already_enrolled');
       })
@@ -112,7 +112,7 @@ export default function FaceEnrollPage() {
 
     try {
       for (let i = 0; i < images.length; i++) {
-        const result = await enrollFace(user.userId, images[i]);
+        const result = await enrollFace(images[i]);
         if (!result.success) {
           setErrorMsg(result.error || 'Enrollment failed. Please try again.');
           setState('error');

@@ -1,82 +1,35 @@
 import {
-  collection, doc, setDoc, getDocs, getDoc,
-  query, where, orderBy, updateDoc,
-  serverTimestamp, onSnapshot
+  collection, doc, getDocs, getDoc,
+  query, where, updateDoc,
+  serverTimestamp, onSnapshot, runTransaction
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { AttendanceRecord } from '@/types';
 
-export async function recordPhase1(data: {
-  sessionId: string;
-  courseId: string;
-  studentId: string;
-  studentName: string;
-  matricNumber: string;
-  phase1Score: number;
-  faceMatchConfidence: number;
-  gpsDistance: number;
-}): Promise<AttendanceRecord> {
-  // Check duplicate
-  const dupQ = query(
-    collection(db, 'attendance'),
-    where('sessionId', '==', data.sessionId),
-    where('studentId', '==', data.studentId)
-  );
-  const existing = await getDocs(dupQ);
-  if (!existing.empty) throw new Error('ALREADY_RECORDED');
-
-  const attendanceId = doc(collection(db, 'attendance')).id;
-  const record: any = {
-    attendanceId,
-    ...data,
-    phase1Status: data.phase1Score > 0 ? 'present' : 'failed',
-    phase1Time: serverTimestamp(),
-    phase2Score: 0,
-    phase2Time: null,
-    phase2Status: 'absent',
-    totalScore: data.phase1Score,
-    remark: 'Present',
-    timestamp: serverTimestamp(),
-    phase1VerificationMethod: 'face_gps'
-  };
-  await setDoc(doc(db, 'attendance', attendanceId), record);
-  return { ...record, phase1Time: new Date() as any };
+/**
+ * Deterministic attendance id — one record per student per session.
+ * Must match attendance_doc_id() in python-backend/services/attendance_service.py.
+ */
+export function attendanceDocId(sessionId: string, studentId: string): string {
+  return `${sessionId}_${studentId}`;
 }
 
-export async function recordPhase2(
-  sessionId: string,
-  studentId: string,
-  data: { phase2Score: number; faceMatchConfidence: number; gpsDistance: number }
-): Promise<void> {
-  const q = query(
+/** Deterministic record first, then legacy random-id records created before this scheme. */
+async function findAttendanceRef(sessionId: string, studentId: string) {
+  const ref = doc(db, 'attendance', attendanceDocId(sessionId, studentId));
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { ref, isLegacy: false };
+  const legacy = await getDocs(query(
     collection(db, 'attendance'),
     where('sessionId', '==', sessionId),
     where('studentId', '==', studentId)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) throw new Error('NO_PHASE1_RECORD');
-
-  const recordDoc = snap.docs[0];
-  const existing = recordDoc.data();
-  const totalScore = (existing.phase1Score || 0) + data.phase2Score;
-
-  let remark = 'Present';
-  if (existing.phase1Score > 0 && data.phase2Score > 0) remark = 'Present';
-  else if (existing.phase1Score > 0 && data.phase2Score === 0) remark = 'Left Early';
-  else if (existing.phase1Score === 0 && data.phase2Score > 0) remark = 'Late';
-  else remark = 'Absent';
-
-  await updateDoc(doc(db, 'attendance', recordDoc.id), {
-    phase2Score: data.phase2Score,
-    phase2Time: serverTimestamp(),
-    phase2Status: data.phase2Score > 0 ? 'present' : 'absent',
-    phase2Confidence: data.faceMatchConfidence,
-    phase2GpsDistance: data.gpsDistance,
-    totalScore,
-    remark,
-    phase2VerificationMethod: 'face_gps'
-  });
+  ));
+  if (!legacy.empty) return { ref: legacy.docs[0].ref, isLegacy: true };
+  return { ref, isLegacy: false };
 }
+
+// Students' own check-ins/check-outs are written by the backend
+// (POST /api/attendance/mark). Only the course lecturer writes here.
 
 export async function recordManualOverride(data: {
   sessionId: string;
@@ -90,87 +43,82 @@ export async function recordManualOverride(data: {
   lecturerId: string;
   reason: string | null;
 }): Promise<void> {
-  const q = query(
-    collection(db, 'attendance'),
-    where('sessionId', '==', data.sessionId),
-    where('studentId', '==', data.studentId)
-  );
-  const snap = await getDocs(q);
-  const existing = snap.empty ? null : snap.docs[0];
+  if (data.activePhase !== 'phase1_open' && data.activePhase !== 'phase2_open') {
+    throw new Error('Session is not currently active for overrides.');
+  }
+  const { ref } = await findAttendanceRef(data.sessionId, data.studentId);
+  const override = {
+    overriddenBy: data.lecturerId,
+    overrideReason: data.reason,
+    overrideTimestamp: serverTimestamp(),
+  };
 
-  if (data.activePhase === 'phase1_open') {
-    if (existing) {
-      const existingData = existing.data() as AttendanceRecord;
-      if (existingData.phase1Score > 0 || existingData.phase1VerificationMethod) {
-        throw new Error("Student already has a Phase 1 record.");
-      }
-    }
-    const attendanceId = doc(collection(db, 'attendance')).id;
-    await setDoc(doc(db, 'attendance', attendanceId), {
-      attendanceId,
-      sessionId: data.sessionId,
-      courseId: data.courseId,
-      studentId: data.studentId,
-      studentName: data.studentName,
-      matricNumber: data.matricNumber,
-      phase1Score: data.phase1Max,
-      phase1Status: 'present',
-      phase1Time: serverTimestamp(),
-      phase2Score: 0,
-      phase2Status: 'absent',
-      phase2Time: null,
-      totalScore: data.phase1Max,
-      remark: 'Present (Manual)',
-      timestamp: serverTimestamp(),
-      phase1VerificationMethod: 'manual_override',
-      overriddenBy: data.lecturerId,
-      overrideReason: data.reason,
-      overrideTimestamp: serverTimestamp(),
-    });
-  } else if (data.activePhase === 'phase2_open') {
-    if (existing) {
-      const existingData = existing.data() as AttendanceRecord;
-      if (existingData.phase2Score > 0 || existingData.phase2VerificationMethod) {
-        throw new Error("Student already has a Phase 2 record.");
-      }
-      await updateDoc(doc(db, 'attendance', existing.id), {
-        phase2Score: data.phase2Max,
-        phase2Status: 'present',
-        phase2Time: serverTimestamp(),
-        totalScore: (existingData.phase1Score || 0) + data.phase2Max,
-        remark: (existingData.phase1Score > 0) ? 'Present (Manual)' : 'Late (Manual)',
-        phase2VerificationMethod: 'manual_override',
-        overriddenBy: data.lecturerId,
-        overrideReason: data.reason,
-        overrideTimestamp: serverTimestamp(),
-      });
-    } else {
-      const attendanceId = doc(collection(db, 'attendance')).id;
-      await setDoc(doc(db, 'attendance', attendanceId), {
-        attendanceId,
+  // Transaction: if the student's own check-in lands at the same moment, we see it
+  // and refuse instead of overwriting it.
+  await runTransaction(db, async (txn) => {
+    const snap = await txn.get(ref);
+    const existing = snap.exists() ? (snap.data() as AttendanceRecord) : null;
+
+    if (data.activePhase === 'phase1_open') {
+      if (existing) throw new Error('Student already has a Phase 1 record.');
+      txn.set(ref, {
+        attendanceId: ref.id,
         sessionId: data.sessionId,
         courseId: data.courseId,
         studentId: data.studentId,
         studentName: data.studentName,
         matricNumber: data.matricNumber,
-        phase1Score: 0,
-        phase1Status: 'absent',
-        phase1Time: null,
+        phase1Score: data.phase1Max,
+        phase1Status: 'present',
+        phase1Time: serverTimestamp(),
+        phase2Score: 0,
+        phase2Status: 'absent',
+        phase2Time: null,
+        totalScore: data.phase1Max,
+        remark: 'Present (Manual)',
+        timestamp: serverTimestamp(),
+        phase1VerificationMethod: 'manual_override',
+        ...override,
+      });
+      return;
+    }
+
+    if (existing) {
+      if (existing.phase2Score > 0 || existing.phase2VerificationMethod) {
+        throw new Error('Student already has a Phase 2 record.');
+      }
+      txn.update(ref, {
         phase2Score: data.phase2Max,
         phase2Status: 'present',
         phase2Time: serverTimestamp(),
-        totalScore: data.phase2Max,
-        remark: 'Late (Manual)',
-        timestamp: serverTimestamp(),
+        totalScore: (existing.phase1Score || 0) + data.phase2Max,
+        remark: existing.phase1Score > 0 ? 'Present (Manual)' : 'Late (Manual)',
         phase2VerificationMethod: 'manual_override',
-        overriddenBy: data.lecturerId,
-        overrideReason: data.reason,
-        overrideTimestamp: serverTimestamp(),
+        ...override,
       });
+      return;
     }
-  } else {
-    throw new Error("Session is not currently active for overrides.");
-  }
+
+    txn.set(ref, {
+      attendanceId: ref.id,
+      sessionId: data.sessionId,
+      courseId: data.courseId,
+      studentId: data.studentId,
+      studentName: data.studentName,
+      matricNumber: data.matricNumber,
+      phase1Score: 0,
+      phase1Status: 'absent',
+      phase1Time: null,
+      phase2Score: data.phase2Max,
+      phase2Status: 'present',
+      phase2Time: serverTimestamp(),
+      totalScore: data.phase2Max,
+      remark: 'Late (Manual)',
+      timestamp: serverTimestamp(),
+      phase2VerificationMethod: 'manual_override',
+      ...override,
+    });
+  });
 }
 
 export async function awardFullMarksAndEnd(sessionId: string, phase2MaxScore: number): Promise<void> {

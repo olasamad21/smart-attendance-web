@@ -44,3 +44,16 @@ next-env.d.ts
 __pycache__/
 venv/
 *.pyc
+
+# python backend
+python-backend/venv/
+python-backend/__pycache__/
+**/__pycache__/
+# biometric data must never be committed
+python-backend/face_data/
+# firebase service account keys
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+
+# demo launcher logs
+/.demo/

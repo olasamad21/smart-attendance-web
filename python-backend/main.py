@@ -17,9 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import face, health
+from routes import attendance, face, health
 app.include_router(health.router, prefix="/api")
 app.include_router(face.router, prefix="/api/face")
+app.include_router(attendance.router, prefix="/api/attendance")
 
 if __name__ == "__main__":
     import uvicorn

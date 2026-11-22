@@ -1,8 +1,107 @@
 rules_version = '2';
+
+// EduVerify security rules.
+//
+// Trust model:
+//   • Students can READ their own data but can NEVER write attendance. Check-ins and
+//     check-outs are written by the backend (Firebase Admin SDK bypasses these rules)
+//     after it has verified the face, GPS distance and session window.
+//   • Lecturers manage their own courses and sessions, and may write attendance for
+//     their own courses (manual overrides, end-of-session marks, re-scoring).
+//   • Server-only collections (face_embeddings, attendance_attempts) are closed to clients.
+//   • Anything not matched below is denied.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function myProfile() { return get(/databases/$(database)/documents/users/$(me())); }
+    function isLecturer() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(me()))
+        && myProfile().data.role == 'lecturer';
+    }
+    function ownsCourse(courseId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/courses/$(courseId))
+        && get(/databases/$(database)/documents/courses/$(courseId)).data.lecturerId == me();
+    }
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Own profile; lecturers can see student profiles (enrolled-student lists).
+      allow read: if signedIn() && (me() == userId || isLecturer());
+      allow create: if signedIn() && me() == userId
+        && request.resource.data.userId == userId
+        && request.resource.data.role in ['student', 'lecturer'];
+      // Role and matric number cannot be changed after registration.
+      allow update: if signedIn() && me() == userId
+        && unchanged('role') && unchanged('userId') && unchanged('matricNumber');
+      allow delete: if false;
+    }
+
+    // Matric-number uniqueness claims (create-only; see registerUser()).
+    match /matricNumbers/{matricId} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == me();
+      allow list, update, delete: if false;
+    }
+
+    // ── Courses ────────────────────────────────────────────────────────────
+    match /courses/{courseId} {
+      allow read: if signedIn();
+      allow create: if isLecturer() && request.resource.data.lecturerId == me();
+      allow update: if signedIn() && resource.data.lecturerId == me() && unchanged('lecturerId');
+      allow delete: if signedIn() && resource.data.lecturerId == me();
+    }
+
+    // ── Enrollments ────────────────────────────────────────────────────────
+    match /enrollments/{enrollmentId} {
+      allow read: if signedIn() && (resource.data.studentId == me() || isLecturer());
+      allow create: if signedIn()
+        && request.resource.data.studentId == me()
+        && exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId));
+      allow delete: if signedIn()
+        && (resource.data.studentId == me() || ownsCourse(resource.data.courseId));
+      allow update: if false;
+    }
+
+    // ── Classrooms (shared catalogue managed by lecturers) ─────────────────
+    match /classrooms/{classroomId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isLecturer();
+    }
+
+    // ── Sessions ───────────────────────────────────────────────────────────
+    match /sessions/{sessionId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.lecturerId == me()
+        && ownsCourse(request.resource.data.courseId);
+      allow update: if signedIn() && resource.data.lecturerId == me()
+        && unchanged('lecturerId') && unchanged('courseId');
+      allow delete: if false;
+    }
+
+    // ── Attendance ─────────────────────────────────────────────────────────
+    match /attendance/{attendanceId} {
+      allow read: if signedIn() && (resource.data.studentId == me() || isLecturer());
+      // Students never write here — only the backend and the course's lecturer.
+      allow create: if ownsCourse(request.resource.data.courseId);
+      allow update: if ownsCourse(resource.data.courseId)
+        && unchanged('courseId') && unchanged('studentId') && unchanged('sessionId');
+      allow delete: if false;
+    }
+
+    // ── Server-only ────────────────────────────────────────────────────────
+    match /face_embeddings/{userId} {
+      allow read, write: if false;
+    }
+    match /attendance_attempts/{attemptId} {
+      allow read, write: if false;
     }
   }
 }

@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 face_data/
 .env
+.env.*
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+test_mtcnn.py
+nixpacks.toml
+Procfile

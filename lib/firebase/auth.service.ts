@@ -5,9 +5,14 @@ import {
   onAuthStateChanged,
   deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/config';
 import { UserProfile } from '@/types';
+
+/** Doc id for a matric-number claim (normalised; '/' is not allowed in doc ids). */
+export function matricClaimId(matricNumber: string): string {
+  return encodeURIComponent(matricNumber.trim().toUpperCase());
+}
 
 export async function registerUser(
   name: string,
@@ -16,13 +21,6 @@ export async function registerUser(
   role: 'lecturer' | 'student',
   extra?: { department?: string; level?: string; matricNumber?: string }
 ): Promise<UserProfile> {
-  // Enforce matric number uniqueness for students
-  if (role === 'student' && extra?.matricNumber) {
-    const q = query(collection(db, 'users'), where('matricNumber', '==', extra.matricNumber));
-    const snap = await getDocs(q);
-    if (!snap.empty) throw new Error('MATRIC_ALREADY_IN_USE');
-  }
-
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   const uid = credential.user.uid;
 
@@ -41,10 +39,24 @@ export async function registerUser(
     createdAt: serverTimestamp(),
   };
 
+  // Matric numbers are unique: each one is "claimed" by a create-only doc in
+  // matricNumbers/{id}. Security rules forbid overwriting an existing claim, so two
+  // students racing for the same number cannot both succeed.
+  const matricRef = role === 'student' && profile.matricNumber
+    ? doc(db, 'matricNumbers', matricClaimId(profile.matricNumber))
+    : null;
+
   try {
-    await setDoc(doc(db, 'users', uid), profile);
-  } catch (error) {
+    if (matricRef && (await getDoc(matricRef)).exists()) {
+      throw new Error('MATRIC_ALREADY_IN_USE');
+    }
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', uid), profile);
+    if (matricRef) batch.set(matricRef, { uid, createdAt: serverTimestamp() });
+    await batch.commit();
+  } catch (error: any) {
     await deleteUser(credential.user).catch(() => {});
+    if (matricRef && error?.code === 'permission-denied') throw new Error('MATRIC_ALREADY_IN_USE');
     throw error;
   }
 

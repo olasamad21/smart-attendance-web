@@ -2,12 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
-import { getActiveSessionWithSync, subscribeToSession } from '@/lib/firebase/sessions.service';
-import { recordPhase1, recordPhase2 } from '@/lib/firebase/attendance.service';
-import { getCourseById } from '@/lib/firebase/courses.service';
-import { verifyFace } from '@/lib/api/face.api';
+import { getActiveSessionForCourse, getSessionsForCourse, subscribeToSession } from '@/lib/firebase/sessions.service';
+import { markAttendance } from '@/lib/api/face.api';
 import { getCurrentPosition, calculateDistance, isWithinRadius } from '@/lib/utils/gps.utils';
-import { Session, Course } from '@/types';
+import { resolveSessionPhase } from '@/lib/utils/session.utils';
+import { Session } from '@/types';
 
 const GRACE_PERIOD_SECONDS = 45;
 
@@ -24,13 +23,16 @@ export default function VerifyPage() {
 
   const [step, setStep] = useState<VerifyStep>('gps');
   const [session, setSession] = useState<Session | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'checking' | 'confirmed' | 'failed'>('checking');
   const [gpsDistance, setGpsDistance] = useState(0);
   const [gpsError, setGpsError] = useState('');
+  const positionRef = useRef<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [confidence, setConfidence] = useState(0);
+  const [awardedScore, setAwardedScore] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [retryAction, setRetryAction] = useState<'camera' | 'gps' | null>(null);
+  const [noSessionMsg, setNoSessionMsg] = useState('There is no active attendance session for this course right now.');
   const [phase, setPhase] = useState<'phase1' | 'phase2'>('phase1');
   
   const [cameraReady, setCameraReady] = useState(false);
@@ -42,31 +44,37 @@ export default function VerifyPage() {
 
   useEffect(() => {
     if (!courseId || !user) return;
-    getActiveSessionWithSync(courseId).then(async s => {
-      if (!s) {
-        // Option B: check if a session exists but is ended (vs truly no session)
-        const { getSessionsForCourse } = await import('@/lib/firebase/sessions.service');
+    // Read-only: the phase is computed locally from the session timestamps.
+    // (Students can no longer write to sessions; the server re-checks the phase on submit.)
+    getActiveSessionForCourse(courseId).then(async s => {
+      const resolved = s ? resolveSessionPhase(s) : 'ended';
+      if (!s || resolved === 'ended') {
         const allSessions = await getSessionsForCourse(courseId);
         const latestSession = allSessions[0]; // ordered by createdAt desc
-        if (latestSession && latestSession.status === 'ended') {
+        if (latestSession) {
           setSessionEnded(true);
         } else {
           setStep('no_session');
         }
         return;
       }
+      if (resolved === 'waiting') {
+        setNoSessionMsg('Check-in has closed and check-out has not opened yet. Come back when check-out opens.');
+        setStep('no_session');
+        return;
+      }
       setSession(s);
-      const c = await getCourseById(s.courseId);
-      setCourse(c);
-      setPhase(s.status === 'phase2_open' ? 'phase2' : 'phase1');
+      setPhase(resolved === 'phase2_open' ? 'phase2' : 'phase1');
       checkGPS(s);
     }).catch(() => setStep('no_session'));
   }, [courseId]);
 
   const checkGPS = async (s: Session) => {
+    setStep('gps');
     setGpsStatus('checking');
     try {
       const pos = await getCurrentPosition();
+      positionRef.current = pos;
       const dist = calculateDistance(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng);
       setGpsDistance(Math.round(dist));
       if (isWithinRadius(pos.latitude, pos.longitude, s.classroomLat, s.classroomLng, s.classroomRadius)) {
@@ -103,7 +111,8 @@ export default function VerifyPage() {
         videoRef.current.play().catch(e => console.log('play interrupted', e));
       }
     } catch {
-      setErrorMsg('Camera access denied.');
+      setErrorMsg('Camera access denied. Allow camera access in your browser settings, then try again.');
+      setRetryAction('camera');
       setStep('failed');
     }
   };
@@ -115,7 +124,7 @@ export default function VerifyPage() {
   };
 
   const captureAndVerify = async () => {
-    if (!videoRef.current || !canvasRef.current || !user || !session) return;
+    if (!videoRef.current || !canvasRef.current || !user || !session || !positionRef.current) return;
     setStep('processing');
 
     const canvas = canvasRef.current;
@@ -130,48 +139,50 @@ export default function VerifyPage() {
 
     stopCamera();
 
-    const result = await verifyFace(user.userId, base64);
-    setConfidence(result.confidence);
+    // The server re-checks the phase, enrollment, distance and face, then writes the record.
+    const result = await markAttendance({
+      sessionId: session.sessionId,
+      image: base64,
+      ...positionRef.current,
+    });
+    if (result.phase) setPhase(result.phase);
+    if (typeof result.confidence === 'number') setConfidence(result.confidence);
 
-    if (result.matched) {
-      try {
-        if (phase === 'phase1') {
-          await recordPhase1({
-            sessionId: session.sessionId,
-            courseId: session.courseId,
-            studentId: user.userId,
-            studentName: user.name,
-            matricNumber: user.matricNumber || '',
-            phase1Score: course?.phase1Marks ?? 3,
-            faceMatchConfidence: result.confidence,
-            gpsDistance,
-          });
-        } else {
-          await recordPhase2(session.sessionId, user.userId, {
-            phase2Score: course?.phase2Marks ?? 2,
-            faceMatchConfidence: result.confidence,
-            gpsDistance,
-          });
-        }
+    const fail = (message: string, retry: 'camera' | 'gps' | null) => {
+      setErrorMsg(message);
+      setRetryAction(retry);
+      setStep('failed');
+    };
+
+    switch (result.status) {
+      case 'recorded':
+        setAwardedScore(result.score ?? 0);
         setStep('success');
-      } catch (e: any) {
-        if (e.message === 'ALREADY_RECORDED') {
-          setStep('already_recorded');
-        } else {
-          setErrorMsg(e.message || 'Failed to record attendance');
-          setStep('failed');
-        }
+        return;
+      case 'already_recorded':
+        setStep('already_recorded');
+        return;
+      case 'face_mismatch':
+      case 'no_face': {
+        const remaining = result.attempts_remaining ?? 0;
+        setAttempts(3 - remaining);
+        fail(remaining > 0 ? `${result.message} ${remaining} attempt${remaining === 1 ? '' : 's'} left.` : result.message,
+          remaining > 0 ? 'camera' : null);
+        return;
       }
-    } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      if (newAttempts >= 3) {
-        setErrorMsg(`Face verification failed after 3 attempts. Confidence: ${result.confidence.toFixed(1)}%`);
-        setStep('failed');
-      } else {
-        setErrorMsg(`Face did not match (${result.confidence.toFixed(1)}% confidence, 70% required). Attempt ${newAttempts}/3`);
-        setStep('failed');
-      }
+      case 'out_of_range':
+        if (typeof result.distance === 'number') setGpsDistance(result.distance);
+        fail(result.message, 'gps');
+        return;
+      case 'phase_closed':
+      case 'no_session':
+        setSessionEnded(true);
+        return;
+      case 'not_enrolled_face':
+        fail(result.message, null);
+        return;
+      default:
+        fail(result.message || 'Failed to record attendance.', result.status === 'error' ? 'camera' : null);
     }
   };
 
@@ -296,7 +307,7 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
       <span className="material-symbols-outlined text-outline text-6xl mb-4">event_busy</span>
       <h2 className="text-xl font-bold text-on-surface mb-2">No Active Session</h2>
-      <p className="text-sm text-on-surface-variant mb-8">There is no active attendance session for this course right now.</p>
+      <p className="text-sm text-on-surface-variant mb-8">{noSessionMsg}</p>
       <button onClick={() => router.back()} className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">Go Back</button>
     </div>
   );
@@ -399,7 +410,7 @@ export default function VerifyPage() {
       </div>
       <h2 className="text-2xl font-bold text-on-surface mb-2">{phase === 'phase1' ? 'Check-in Recorded!' : 'Check-out Recorded!'}</h2>
       <p className="text-sm text-on-surface-variant mb-2">Face match confidence: {confidence.toFixed(1)}%</p>
-      <p className="text-sm text-on-surface-variant mb-8">{phase === 'phase1' ? `+${course?.phase1Marks ?? 3} marks awarded` : `+${course?.phase2Marks ?? 2} marks awarded`}</p>
+      <p className="text-sm text-on-surface-variant mb-8">+{awardedScore} marks awarded</p>
       <button onClick={() => router.push('/student/dashboard')}
         className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
         Back to Dashboard
@@ -429,8 +440,8 @@ export default function VerifyPage() {
       <h2 className="text-xl font-bold text-on-surface mb-2">Verification Failed</h2>
       <p className="text-sm text-on-surface-variant mb-8">{errorMsg}</p>
       <div className="w-full flex flex-col gap-3">
-        {attempts < 3 && (
-          <button onClick={startCamera}
+        {retryAction && (
+          <button onClick={() => (retryAction === 'gps' && session ? checkGPS(session) : startCamera())}
             className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
             Try Again
           </button>

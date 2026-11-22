@@ -19,7 +19,7 @@ export default function StudentProfilePage() {
 
   useEffect(() => {
     if (user?.userId) {
-      checkFaceEnrolled(user.userId)
+      checkFaceEnrolled()
         .then(res => setFaceEnrolled(res.enrolled))
         .catch(() => setFaceEnrolled(false))
         .finally(() => setCheckingFace(false));

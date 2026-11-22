@@ -1,11 +1,11 @@
-export async function getCurrentPosition(): Promise<{latitude: number, longitude: number}> {
+export async function getCurrentPosition(): Promise<{latitude: number, longitude: number, accuracy: number}> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by your browser'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
       (err) => {
         if (err.code === 1) reject(new Error('Location access denied. Please enable location in browser settings.'));
         else if (err.code === 3) reject(new Error('Location request timed out. Please try again.'));

@@ -1,0 +1,15 @@
+# Files never uploaded to Cloud Build / Cloud Run.
+.gcloudignore
+.git
+.gitignore
+venv/
+__pycache__/
+*.pyc
+face_data/
+.env
+.env.*
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+test_mtcnn.py
+nixpacks.toml
+Procfile
