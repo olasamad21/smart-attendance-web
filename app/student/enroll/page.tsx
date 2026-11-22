@@ -1,134 +1,125 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { enrollFace, checkFaceEnrolled } from '@/lib/api/face.api';
+import { useFaceTracker } from '@/hooks/useFaceTracker';
+import { qualityIssues, ISSUE_HINTS, type FaceAnalysis } from '@/lib/face/analysis';
+import FaceCamera, { type OvalTone } from '@/components/face/FaceCamera';
 
-type EnrollState = 'intro' | 'camera' | 'scanning' | 'processing' | 'success' | 'error' | 'already_enrolled';
+type EnrollState = 'intro' | 'camera' | 'processing' | 'success' | 'error' | 'already_enrolled';
+
+/**
+ * Guided multi-pose enrollment: blink once (liveness), then capture front / left / right /
+ * front. Each shot is taken automatically once the pose is held and the photo passes the
+ * quality checks. Turned-head samples make later matching robust to how students hold
+ * their phones.
+ */
+interface Pose {
+  instruction: string;
+  matches: (a: FaceAnalysis) => boolean;
+  frontal: boolean;
+}
+const POSES: Pose[] = [
+  { instruction: 'Look straight at the camera', frontal: true, matches: () => true },
+  // In the raw (unmirrored) frame, turning to the user's left gives positive yaw.
+  { instruction: 'Turn your head slightly to your left', frontal: false, matches: a => a.yaw > 0.12 && a.yaw < 0.5 },
+  { instruction: 'Turn your head slightly to your right', frontal: false, matches: a => a.yaw < -0.12 && a.yaw > -0.5 },
+  { instruction: 'Look straight at the camera again', frontal: true, matches: () => true },
+];
+const HOLD_MS = 450;
 
 export default function FaceEnrollPage() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const [state, setState] = useState<EnrollState>('intro');
   const [errorMsg, setErrorMsg] = useState('');
   const [isChecking, setIsChecking] = useState(true);
+  const [needsReenroll, setNeedsReenroll] = useState(false);
 
-  const [cameraReady, setCameraReady] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [scanImages, setScanImages] = useState<string[]>([]);
+  const [blinked, setBlinked] = useState(false);
+  const [poseIndex, setPoseIndex] = useState(0);
+  const [justCaptured, setJustCaptured] = useState(false);
+  const shots = useRef<string[]>([]);
+  const holdSince = useRef<number | null>(null);
+  const eyesClosed = useRef(false);
 
-  // Check if already enrolled
+  const tracker = useFaceTracker(state === 'camera');
+  const { analysis, latest, capture, stop: stopTracker, status: trackerStatus } = tracker;
+
   useEffect(() => {
-    if (!user?.userId) {
-      setIsChecking(false);
-      return;
-    }
+    if (!user?.userId) { setIsChecking(false); return; }
     checkFaceEnrolled()
       .then(res => {
         if (res.enrolled) setState('already_enrolled');
+        setNeedsReenroll(!!res.needs_reenroll);
       })
-      .catch(() => {
-        // If check fails, just show intro
-      })
-      .finally(() => {
-        setIsChecking(false);
-      });
+      .finally(() => setIsChecking(false));
   }, [user?.userId]);
 
-  // Start camera
-  const startCamera = async () => {
-    setState('camera');
-    setCameraReady(false);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          setCameraReady(true);
-        };
-        // In case metadata already loaded before handler was attached
-        if (videoRef.current.readyState >= 1) {
-          setCameraReady(true);
-        }
-        videoRef.current.play().catch(e => console.log('play interrupted', e));
-      }
-    } catch (err) {
-      setErrorMsg('Camera access denied. Please allow camera access in your browser settings and try again.');
-      setState('error');
-    }
-  };
-
-  // Stop camera
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    setCameraReady(false);
-  };
-
-  const startScanning = () => {
-    setState('scanning');
-    setScanProgress(0);
-    setScanImages([]);
-
-    let currentProgress = 0;
-    const images: string[] = [];
-    const interval = setInterval(() => {
-      if (!videoRef.current || !canvasRef.current || !user) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = Math.max(video.videoWidth || 640, 640);
-      canvas.height = Math.max(video.videoHeight || 480, 480);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      // Capture the true un-mirrored frame
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL('image/jpeg', 0.95);
-      
-      images.push(base64);
-      currentProgress++;
-      setScanProgress(currentProgress);
-      
-      if (currentProgress >= 4) {
-        clearInterval(interval);
-        setScanImages(images);
-        processEnrollment(images);
-      }
-    }, 1000);
-  };
-
-  const processEnrollment = async (images: string[]) => {
-    if (!user) return;
-    setState('processing');
-    stopCamera();
-
-    try {
-      for (let i = 0; i < images.length; i++) {
-        const result = await enrollFace(images[i]);
-        if (!result.success) {
-          setErrorMsg(result.error || 'Enrollment failed. Please try again.');
-          setState('error');
-          return;
-        }
-      }
-      setState('success');
-    } catch (error) {
-      setErrorMsg('An unexpected error occurred. Please try again.');
-      setState('error');
-    }
-  };
-
   useEffect(() => {
-    return () => stopCamera();
+    if (tracker.status === 'error') {
+      setErrorMsg(tracker.error);
+      setState('error');
+    }
+  }, [tracker.status, tracker.error]);
+
+  const startCamera = () => {
+    shots.current = [];
+    holdSince.current = null;
+    eyesClosed.current = false;
+    setBlinked(false);
+    setPoseIndex(0);
+    setJustCaptured(false);
+    setState('camera');
+  };
+
+  const submit = useCallback(async (images: string[]) => {
+    setState('processing');
+    const result = await enrollFace(images);
+    if (result.success) {
+      setState('success');
+    } else {
+      setErrorMsg(result.error || 'Enrollment failed. Please try again.');
+      setState('error');
+    }
   }, []);
+
+  // Drive the guided capture from the live face analysis.
+  useEffect(() => {
+    if (state !== 'camera' || trackerStatus !== 'ready' || justCaptured) return;
+    const a = analysis;
+
+    if (!blinked) {
+      if (a.faceCount !== 1) return;
+      if (a.blinkLeft > 0.45 && a.blinkRight > 0.45) eyesClosed.current = true;
+      else if (eyesClosed.current && a.blinkLeft < 0.25 && a.blinkRight < 0.25) setBlinked(true);
+      return;
+    }
+
+    const pose = POSES[poseIndex];
+    const ok = qualityIssues(a, { requireFrontal: pose.frontal }).length === 0 && pose.matches(a);
+    const now = performance.now();
+    if (!ok) { holdSince.current = null; return; }
+    holdSince.current ??= now;
+    if (now - holdSince.current < HOLD_MS) return;
+
+    const fresh = latest();
+    if (qualityIssues(fresh, { requireFrontal: pose.frontal }).length > 0 || !pose.matches(fresh)) return;
+    const image = capture();
+    if (!image) return;
+    holdSince.current = null;
+    shots.current.push(image);
+    if (navigator.vibrate) navigator.vibrate(40);
+
+    if (poseIndex === POSES.length - 1) {
+      stopTracker();
+      submit(shots.current);
+      return;
+    }
+    setJustCaptured(true);
+    setTimeout(() => { setJustCaptured(false); setPoseIndex(i => i + 1); }, 700);
+  }, [analysis, state, trackerStatus, stopTracker, blinked, poseIndex, justCaptured, latest, capture, submit]);
 
   if (isChecking) {
     return (
@@ -138,7 +129,6 @@ export default function FaceEnrollPage() {
     );
   }
 
-  // Already enrolled screen
   if (state === 'already_enrolled') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto">
@@ -148,7 +138,7 @@ export default function FaceEnrollPage() {
         <h2 className="text-2xl font-bold text-on-surface mb-2 text-center">Face Already Enrolled</h2>
         <p className="text-sm text-on-surface-variant text-center mb-8">Your face is registered for attendance verification.</p>
         <div className="w-full flex flex-col gap-3">
-          <button onClick={() => { setState('intro'); setIsChecking(false); }}
+          <button onClick={() => setState('intro')}
             className="w-full h-12 border border-outline-variant rounded-full text-sm text-on-surface-variant active:scale-95">
             Re-enroll Face
           </button>
@@ -161,12 +151,11 @@ export default function FaceEnrollPage() {
     );
   }
 
-  // Intro screen
   if (state === 'intro') {
     return (
       <div className="min-h-screen bg-background flex flex-col max-w-md mx-auto">
         <header className="flex items-center px-5 h-12 sticky top-0 bg-background z-10">
-          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low text-primary">
+          <button onClick={() => router.back()} aria-label="Back" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low text-primary">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
         </header>
@@ -174,17 +163,21 @@ export default function FaceEnrollPage() {
           <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center mb-8">
             <span className="material-symbols-outlined text-primary text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>face</span>
           </div>
-          <h2 className="text-2xl font-bold text-on-surface text-center mb-3">Set up face verification</h2>
+          <h2 className="text-2xl font-bold text-on-surface text-center mb-3">
+            {needsReenroll ? 'Update face verification' : 'Set up face verification'}
+          </h2>
           <p className="text-sm text-on-surface-variant text-center mb-2 leading-relaxed">
-            Your face is used to confirm your identity during attendance sessions.
+            {needsReenroll
+              ? 'Face verification was upgraded for better accuracy. Set up your face again — it takes about 20 seconds.'
+              : 'Your face is used to confirm your identity during attendance sessions. It takes about 20 seconds.'}
           </p>
           <p className="text-xs text-on-surface-variant text-center mb-10 leading-relaxed bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
             <span className="material-symbols-outlined text-sm align-middle mr-1" style={{fontVariationSettings:"'FILL' 1"}}>security</span>
-            Only a secure mathematical encoding of your face is stored — not the actual photo.
+            Only a secure mathematical encoding of your face is stored — not the photos.
           </p>
           <div className="w-full flex flex-col gap-3">
             <div className="flex flex-col gap-2 mb-4">
-              {['Ensure good lighting', 'Look directly at the camera', 'Remove glasses if possible'].map((tip, i) => (
+              {['Find even, bright light (face a window or lamp)', 'Blink once, then follow the head-turn prompts', 'Photos are taken automatically — just hold each pose'].map((tip, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-primary">{i + 1}</span>
@@ -204,81 +197,51 @@ export default function FaceEnrollPage() {
     );
   }
 
-  // Camera screen
-  if (state === 'camera' || state === 'scanning') {
+  if (state === 'camera') {
+    const pose = POSES[poseIndex];
+    const issues = qualityIssues(analysis, { requireFrontal: pose.frontal });
+    let instruction: string;
+    let tone: OvalTone = 'neutral';
+    if (justCaptured) {
+      instruction = 'Got it ✓';
+      tone = 'done';
+    } else if (!blinked) {
+      instruction = analysis.faceCount === 1 ? 'Blink once to begin' : ISSUE_HINTS.no_face;
+      tone = analysis.faceCount === 1 ? 'good' : 'neutral';
+    } else if (issues.length) {
+      instruction = issues[0] === 'not_frontal' ? pose.instruction : ISSUE_HINTS[issues[0]];
+      tone = 'guide';
+    } else if (!pose.matches(analysis)) {
+      instruction = pose.instruction;
+      tone = 'guide';
+    } else {
+      instruction = 'Hold still…';
+      tone = 'good';
+    }
     return (
-      <div className="w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto" style={{ height: 'calc(100dvh - 64px)' }}>
-        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover -scale-x-100" autoPlay muted playsInline />
-        <canvas ref={canvasRef} className="hidden" />
-
-        <div className="absolute inset-0 z-10 flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4">
-            <button onClick={() => { stopCamera(); setState('intro'); }}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-95">
-              <span className="material-symbols-outlined">arrow_back</span>
-            </button>
-            <h2 className="text-white font-bold text-lg drop-shadow-md">Face Enrollment</h2>
-            <div className="w-10" />
-          </div>
-
-          {/* Face guide */}
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {state === 'camera' ? (
-              <div className="w-72 h-[22rem] rounded-[50%] border-4 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] flex items-center justify-center">
-                <span className="material-symbols-outlined text-white/30 text-6xl" style={{fontVariationSettings:"'FILL' 1"}}>face</span>
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="w-72 h-[22rem] rounded-[50%] border-4 border-white/30 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]" />
-                <svg className="absolute inset-0 w-72 h-[22rem]" viewBox="0 0 288 352">
-                  <ellipse cx="144" cy="176" rx="140" ry="172"
-                    fill="none" stroke="#a9ece5" strokeWidth="4"
-                    strokeDasharray="980"
-                    strokeDashoffset={980 - (980 * scanProgress / 4)}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000 ease-linear"
-                  />
-                </svg>
-              </div>
-            )}
-            
-            {state === 'camera' ? (
-              <p className="text-white/80 text-sm mt-4 drop-shadow-md">Center your face in the oval</p>
-            ) : (
-              <p className="text-white/90 text-sm mt-4 drop-shadow-md font-medium">
-                Hold still... Capturing {scanProgress}/4
-              </p>
-            )}
-          </div>
-
-          {/* Capture button */}
-          <div className="flex justify-center pb-6">
-            {state === 'camera' && cameraReady && (
-              <button onClick={startScanning}
-                className="h-14 px-8 rounded-full bg-white shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined text-primary text-2xl" style={{fontVariationSettings:"'FILL' 1"}}>face</span>
-                <span className="text-primary font-bold text-sm">Begin Scan</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <FaceCamera
+        videoRef={tracker.videoRef}
+        status={tracker.status}
+        title="Face Enrollment"
+        instruction={instruction}
+        subtext={blinked ? `Photo ${Math.min(poseIndex + 1, POSES.length)} of ${POSES.length}` : 'Liveness check'}
+        tone={tone}
+        steps={{ done: blinked ? poseIndex + (justCaptured ? 1 : 0) : 0, total: POSES.length }}
+        onBack={() => setState('intro')}
+      />
     );
   }
 
-  // Processing screen
   if (state === 'processing') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto">
         <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6" />
-        <h2 className="text-xl font-bold text-on-surface mb-2">Processing 4 samples...</h2>
-        <p className="text-sm text-on-surface-variant text-center">This may take a few seconds. Please wait.</p>
+        <h2 className="text-xl font-bold text-on-surface mb-2">Creating your face profile…</h2>
+        <p className="text-sm text-on-surface-variant text-center">This takes a few seconds.</p>
       </div>
     );
   }
 
-  // Success screen
   if (state === 'success') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto">
@@ -286,9 +249,9 @@ export default function FaceEnrollPage() {
           <span className="material-symbols-outlined text-primary text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
         </div>
         <h2 className="text-2xl font-bold text-on-surface text-center mb-2">Face Enrolled!</h2>
-        <p className="text-sm text-on-surface-variant text-center mb-2">4 samples captured and averaged.</p>
+        <p className="text-sm text-on-surface-variant text-center mb-2">{POSES.length} photos from different angles were captured.</p>
         <p className="text-xs text-on-surface-variant text-center mb-10 bg-surface-container-low rounded-xl p-3 border border-outline-variant/20">
-          Your photo was processed and deleted. Only a secure face encoding is stored.
+          The photos were processed and discarded. Only a secure face encoding is stored.
         </p>
         <button onClick={() => router.push('/student/dashboard')}
           className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
@@ -298,7 +261,6 @@ export default function FaceEnrollPage() {
     );
   }
 
-  // Error screen
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto">
       <div className="w-24 h-24 rounded-full bg-error-container flex items-center justify-center mb-6">

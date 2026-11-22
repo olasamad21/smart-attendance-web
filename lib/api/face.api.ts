@@ -28,11 +28,12 @@ async function readError(response: Response, fallback: string): Promise<string> 
   return fallback;
 }
 
-export async function enrollFace(base64Image: string): Promise<{ success: boolean; message?: string; error?: string }> {
+/** Replace the signed-in user's face template with 3–6 aligned face crops (one per pose). */
+export async function enrollFace(images: string[]): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
     const response = await authedFetch('/api/face/enroll', {
       method: 'POST',
-      body: JSON.stringify({ image: base64Image }),
+      body: JSON.stringify({ images }),
     });
     if (!response.ok) return { success: false, error: await readError(response, 'Enrollment failed') };
     return await response.json();
@@ -41,7 +42,13 @@ export async function enrollFace(base64Image: string): Promise<{ success: boolea
   }
 }
 
-export async function checkFaceEnrolled(): Promise<{ enrolled: boolean }> {
+export interface FaceStatus {
+  enrolled: boolean;
+  /** Enrolled with an older face pipeline — must enroll again. */
+  needs_reenroll?: boolean;
+}
+
+export async function checkFaceEnrolled(): Promise<FaceStatus> {
   try {
     const response = await authedFetch('/api/face/status');
     if (!response.ok) return { enrolled: false };
@@ -86,6 +93,7 @@ export interface MarkAttendanceResult {
   distance?: number;
   radius?: number;
   attempts_remaining?: number;
+  needs_reenroll?: boolean;
 }
 
 /**

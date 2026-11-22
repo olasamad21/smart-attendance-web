@@ -1,7 +1,24 @@
-import os
+"""
+Face enrollment and verification.
+
+Pipeline v2:
+  * The browser sends tight, eye-aligned face crops (MediaPipe) that already passed
+    quality and liveness checks.
+  * The server re-detects and aligns the face in each crop (RetinaFace by default) and
+    embeds it with Facenet512.
+  * Enrollment stores 3–5 separate pose samples (front / left / right ...). Verification
+    compares against every sample and uses the best match, instead of one averaged vector.
+  * Confident matches add an "adaptive" sample (capped) so the template keeps up with
+    small appearance changes (glasses, haircut).
+
+Records from pipeline v1 (single full-frame photo, no detection) are incompatible with v2
+embeddings, so those users are asked to re-enroll.
+"""
 import base64
 import io
+import itertools
 import json
+import os
 
 import numpy as np
 from PIL import Image
@@ -10,55 +27,60 @@ from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 from services.firebase import get_db
 
-# Legacy on-disk store — only read for one-time migration into Firestore.
-FACE_DATA_DIR = os.getenv("FACE_DATA_DIR", "./face_data")
-
-# Embeddings live in a server-only collection (Firestore rules deny all client access).
-FACE_COLLECTION = "face_embeddings"
-
-# Tunable threshold — higher = stricter matching
-MATCH_THRESHOLD = float(os.getenv("MATCH_THRESHOLD", "0.65"))
-
-MAX_SAMPLES = 5
+PIPELINE_VERSION = 2
 MODEL_NAME = "Facenet512"
-DETECTOR = "skip"
+DETECTOR = os.getenv("FACE_DETECTOR", "retinaface")
 
+# Cosine similarity needed to accept a match. 0.70 == DeepFace's published Facenet512
+# cosine-distance threshold (0.30). Tune with `python -m scripts.face_calibration`.
+MATCH_THRESHOLD = float(os.getenv("MATCH_THRESHOLD", "0.70"))
+# A match this far above the threshold is trusted enough to become an adaptive sample.
+ADAPTIVE_MARGIN = float(os.getenv("ADAPTIVE_MARGIN", "0.08"))
+MAX_ADAPTIVE_SAMPLES = 3
+
+MIN_ENROLL_SAMPLES = 3
+MAX_ENROLL_SAMPLES = 6
+# Every enrollment sample must resemble the others at least this much (same person, usable photo).
+MIN_SAMPLE_CONSISTENCY = float(os.getenv("MIN_SAMPLE_CONSISTENCY", "0.50"))
+
+FACE_COLLECTION = "face_embeddings"
+FACE_DATA_DIR = os.getenv("FACE_DATA_DIR", "./face_data")  # legacy, migration only
+
+
+# ── Embeddings ───────────────────────────────────────────────────────────────
 
 def base64_to_image(base64_str: str) -> np.ndarray:
     if "," in base64_str:
-        base64_str = base64_str.split(",")[1]
-    img_bytes = base64.b64decode(base64_str)
-    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    return np.array(img)
+        base64_str = base64_str.split(",", 1)[1]
+    img = Image.open(io.BytesIO(base64.b64decode(base64_str))).convert("RGB")
+    # DeepFace expects BGR arrays (OpenCV convention).
+    return np.array(img)[:, :, ::-1]
 
 
-def get_embedding(img_array: np.ndarray, enforce: bool = True) -> list | None:
-    """Get face embedding from image array. Returns None if no face detected."""
+def get_embedding(img_array: np.ndarray) -> list | None:
+    """Embedding of the single most prominent face in the crop, or None if no face found."""
     try:
         result = DeepFace.represent(
             img_path=img_array,
             model_name=MODEL_NAME,
-            enforce_detection=enforce,
             detector_backend=DETECTOR,
+            enforce_detection=True,
+            align=True,
         )
-        if result and len(result) > 0:
-            return result[0]["embedding"]
-        return None
-    except Exception as e:
-        error_msg = str(e)
-        if "Face could not be detected" in error_msg or "No face" in error_msg.lower():
+    except ValueError as e:
+        if "Face could not be detected" in str(e) or "no face" in str(e).lower():
             return None
-        raise e
+        raise
+    if not result:
+        return None
+    best = max(result, key=lambda r: (r.get("facial_area") or {}).get("w", 0) * (r.get("facial_area") or {}).get("h", 0))
+    return best["embedding"]
 
 
 def cosine_similarity(a: list, b: list) -> float:
-    """Returns similarity between 0 and 1. Higher = more similar."""
-    a_arr = np.array(a)
-    b_arr = np.array(b)
+    a_arr, b_arr = np.asarray(a), np.asarray(b)
     norm = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
-    if norm == 0:
-        return 0.0
-    return float(np.dot(a_arr, b_arr) / norm)
+    return float(np.dot(a_arr, b_arr) / norm) if norm else 0.0
 
 
 # ── Storage ──────────────────────────────────────────────────────────────────
@@ -69,18 +91,18 @@ def _doc(user_id: str):
 
 
 def _migrate_legacy_file(user_id: str) -> dict | None:
-    """Move a legacy ./face_data/<uid>.json record into Firestore, then delete the file."""
+    """Move a legacy ./face_data/<uid>.json record into Firestore (as pipeline v1)."""
     path = os.path.join(FACE_DATA_DIR, f"{user_id}.json")
     if not os.path.exists(path):
         return None
     with open(path, "r") as f:
         legacy = json.load(f)
-    samples = legacy.get("embeddings") or [legacy.get("embedding", [])]
-    samples = [s for s in samples if s][-MAX_SAMPLES:]
+    samples = [s for s in (legacy.get("embeddings") or [legacy.get("embedding", [])]) if s][-5:]
     if not samples:
         return None
-    record = _build_record(samples)
-    _doc(user_id).set({**record, "updatedAt": SERVER_TIMESTAMP, "migratedFromFile": True})
+    record = {"samples": [{"v": s} for s in samples], "pipeline": 1, "model": MODEL_NAME,
+              "migratedFromFile": True}
+    _doc(user_id).set({**record, "updatedAt": SERVER_TIMESTAMP})
     try:
         os.remove(path)
     except OSError:
@@ -88,92 +110,107 @@ def _migrate_legacy_file(user_id: str) -> dict | None:
     return record
 
 
-def _build_record(samples: list[list[float]]) -> dict:
-    return {
-        "embeddings": [{"v": s} for s in samples],
-        "embedding": np.mean(samples, axis=0).tolist(),  # averaged embedding used for matching
-        "sample_count": len(samples),
-        "model": MODEL_NAME,
-    }
-
-
 def load_face_record(user_id: str) -> dict | None:
     snap = _doc(user_id).get()
-    if snap.exists:
-        return snap.to_dict()
-    return _migrate_legacy_file(user_id)
+    return snap.to_dict() if snap.exists else _migrate_legacy_file(user_id)
+
+
+def face_status(user_id: str) -> dict:
+    record = load_face_record(user_id)
+    if not record:
+        return {"enrolled": False, "needs_reenroll": False}
+    current = record.get("pipeline") == PIPELINE_VERSION
+    return {"enrolled": current, "needs_reenroll": not current,
+            "sample_count": len(record.get("samples", []))}
 
 
 def is_enrolled(user_id: str) -> bool:
-    return load_face_record(user_id) is not None
+    return face_status(user_id)["enrolled"]
 
 
 # ── Public operations ────────────────────────────────────────────────────────
 
-def enroll_face(user_id: str, base64_image: str) -> dict:
+def enroll_faces(user_id: str, images: list[str]) -> dict:
     """
-    Enroll a face sample. Repeated calls keep up to MAX_SAMPLES samples and
-    average them for more robust matching.
+    Replace the user's face template with a fresh multi-pose enrollment.
+    Rejects the set if too few faces are usable or the samples don't look like one person.
     """
-    try:
-        img_array = base64_to_image(base64_image)
-        embedding = get_embedding(img_array, enforce=True)
+    if not (MIN_ENROLL_SAMPLES <= len(images) <= MAX_ENROLL_SAMPLES):
+        return {"success": False, "error": f"Send between {MIN_ENROLL_SAMPLES} and {MAX_ENROLL_SAMPLES} photos."}
 
-        if embedding is None:
-            return {
-                "success": False,
-                "error": "No face detected. Please ensure your face is clearly visible, well-lit, and centered in the frame.",
-            }
+    embeddings = []
+    for image in images:
+        try:
+            emb = get_embedding(base64_to_image(image))
+        except Exception as e:  # corrupt image, model error
+            return {"success": False, "error": f"Could not process a photo: {e}"}
+        if emb is not None:
+            embeddings.append(emb)
 
-        existing = load_face_record(user_id)
-        samples = [s["v"] for s in existing.get("embeddings", [])] if existing else []
-        samples.append(embedding)
-        samples = samples[-MAX_SAMPLES:]
+    if len(embeddings) < MIN_ENROLL_SAMPLES:
+        return {"success": False,
+                "error": "Your face wasn't clear in enough photos. Use good, even lighting and try again."}
 
-        _doc(user_id).set({**_build_record(samples), "updatedAt": SERVER_TIMESTAMP})
+    # Consistency: each sample's average similarity to the others.
+    for i, emb in enumerate(embeddings):
+        others = [cosine_similarity(emb, o) for j, o in enumerate(embeddings) if j != i]
+        if np.mean(others) < MIN_SAMPLE_CONSISTENCY:
+            return {"success": False,
+                    "error": "The photos didn't match each other well. Keep only your face in view and try again."}
 
-        n = len(samples)
-        return {
-            "success": True,
-            "message": f"Face enrolled successfully ({n} sample{'s' if n > 1 else ''} averaged)",
-            "sample_count": n,
-        }
-
-    except Exception as e:
-        if "Face could not be detected" in str(e):
-            return {"success": False, "error": "No face detected. Ensure good lighting and your face is clearly visible."}
-        return {"success": False, "error": f"Enrollment failed: {e}"}
+    pair_sims = [cosine_similarity(a, b) for a, b in itertools.combinations(embeddings, 2)]
+    _doc(user_id).set({
+        "samples": [{"v": e} for e in embeddings],
+        "adaptive": [],
+        "pipeline": PIPELINE_VERSION,
+        "model": MODEL_NAME,
+        "detector": DETECTOR,
+        "enrollConsistency": round(float(np.mean(pair_sims)), 4),
+        "updatedAt": SERVER_TIMESTAMP,
+    })
+    return {"success": True, "sample_count": len(embeddings),
+            "message": f"Face enrolled with {len(embeddings)} photos."}
 
 
 def verify_face(user_id: str, base64_image: str) -> dict:
-    """
-    Verify a face against the stored embedding (cosine similarity vs threshold).
-    Returns matched status, confidence percentage and threshold.
-    """
+    """Compare one aligned face crop against the user's enrolled samples (best match wins)."""
+    record = load_face_record(user_id)
+    if not record:
+        return {"matched": False, "confidence": 0.0, "not_enrolled": True,
+                "error": "Face not enrolled. Please complete face enrollment first."}
+    if record.get("pipeline") != PIPELINE_VERSION:
+        return {"matched": False, "confidence": 0.0, "needs_reenroll": True,
+                "error": "Face verification was upgraded. Please set up your face again (takes 20 seconds)."}
+
     try:
-        stored = load_face_record(user_id)
-        if not stored:
-            return {"matched": False, "confidence": 0.0, "not_enrolled": True,
-                    "error": "Face not enrolled. Please complete face enrollment first."}
-
-        verify_embedding = get_embedding(base64_to_image(base64_image), enforce=True)
-        if verify_embedding is None:
-            return {"matched": False, "confidence": 0.0, "no_face": True,
-                    "error": "No face detected in verification image. Look directly at the camera."}
-
-        similarity = cosine_similarity(stored["embedding"], verify_embedding)
-        return {
-            "matched": similarity >= MATCH_THRESHOLD,
-            "confidence": round(similarity * 100, 2),
-            "threshold": round(MATCH_THRESHOLD * 100, 1),
-            "sample_count": stored.get("sample_count", 1),
-        }
-
+        probe = get_embedding(base64_to_image(base64_image))
     except Exception as e:
-        if "Face could not be detected" in str(e):
-            return {"matched": False, "confidence": 0.0, "no_face": True,
-                    "error": "No face detected. Ensure good lighting and look directly at the camera."}
         return {"matched": False, "confidence": 0.0, "error": f"Verification failed: {e}"}
+    if probe is None:
+        return {"matched": False, "confidence": 0.0, "no_face": True,
+                "error": "No face detected. Face the camera in good light."}
+
+    enrolled = [s["v"] for s in record.get("samples", [])]
+    adaptive = [s["v"] for s in record.get("adaptive", [])]
+    best_enrolled = max((cosine_similarity(probe, s) for s in enrolled), default=0.0)
+    best_adaptive = max((cosine_similarity(probe, s) for s in adaptive), default=0.0)
+    best = max(best_enrolled, best_adaptive)
+    matched = best >= MATCH_THRESHOLD
+
+    # Only learn from matches that are strong against the ORIGINAL enrollment, so the
+    # template can't drift toward an impostor through a chain of borderline matches.
+    if best_enrolled >= MATCH_THRESHOLD + ADAPTIVE_MARGIN:
+        adaptive_entries = (record.get("adaptive", []) + [{"v": probe}])[-MAX_ADAPTIVE_SAMPLES:]
+        try:
+            _doc(user_id).update({"adaptive": adaptive_entries, "updatedAt": SERVER_TIMESTAMP})
+        except Exception:
+            pass  # learning is best-effort; never fail a verification over it
+
+    return {
+        "matched": matched,
+        "confidence": round(best * 100, 2),
+        "threshold": round(MATCH_THRESHOLD * 100, 1),
+    }
 
 
 def delete_face(user_id: str) -> dict:

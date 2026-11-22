@@ -138,8 +138,8 @@ def mark_attendance(uid: str, session_id: str, image: str, latitude: float, long
 
     # 6. Face verification.
     face = verify_face(uid, image)
-    if face.get("not_enrolled"):
-        return _result("not_enrolled_face", face["error"], phase=phase)
+    if face.get("not_enrolled") or face.get("needs_reenroll"):
+        return _result("not_enrolled_face", face["error"], phase=phase, needs_reenroll=bool(face.get("needs_reenroll")))
     if face.get("no_face"):
         return _result("no_face", face["error"], phase=phase, attempts_remaining=MAX_FACE_ATTEMPTS - failures)
     if face.get("error"):

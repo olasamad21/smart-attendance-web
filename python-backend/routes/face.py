@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from services.face_service import enroll_face, delete_face, is_enrolled
+from services.face_service import enroll_faces, delete_face, face_status
 from services.firebase import require_uid
 
 router = APIRouter()
@@ -10,23 +10,22 @@ router = APIRouter()
 # never from the request — a user can only enroll, check or delete their own face.
 
 
-class FaceImageRequest(BaseModel):
-    image: str  # base64 encoded image
+class FaceEnrollRequest(BaseModel):
+    # base64 aligned face crops, one per pose (front / left / right / ...)
+    images: list[str] = Field(min_length=3, max_length=6)
 
 
 @router.post("/enroll")
-def enroll(request: FaceImageRequest, uid: str = Depends(require_uid)):
-    if not request.image:
-        raise HTTPException(status_code=400, detail="image is required")
-    result = enroll_face(uid, request.image)
+def enroll(request: FaceEnrollRequest, uid: str = Depends(require_uid)):
+    result = enroll_faces(uid, request.images)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
 
 @router.get("/status")
-def face_status(uid: str = Depends(require_uid)):
-    return {"enrolled": is_enrolled(uid)}
+def status(uid: str = Depends(require_uid)):
+    return face_status(uid)
 
 
 @router.delete("/me")

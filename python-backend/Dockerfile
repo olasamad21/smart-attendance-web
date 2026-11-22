@@ -29,8 +29,8 @@ RUN pip install --no-cache-dir --user -r requirements.txt \
     && (pip uninstall -y opencv-python opencv-contrib-python || true) \
     && pip install --no-cache-dir --user "opencv-python-headless>=4.10.0"
 
-# Download the Facenet512 weights at build time so the first check-in isn't slow.
-RUN python -c "from deepface import DeepFace; DeepFace.build_model('Facenet512')"
+# Download the Facenet512 + RetinaFace weights at build time so the first check-in isn't slow.
+RUN python -c "from deepface import DeepFace; DeepFace.build_model('Facenet512'); from retinaface import RetinaFace; RetinaFace.build_model()"
 
 COPY --chown=user . .
 

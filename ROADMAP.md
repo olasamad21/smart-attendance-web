@@ -47,13 +47,13 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 
 | # | Item | Where | Status |
 |---|------|-------|--------|
-| 2.1 | **Browser-side face quality gate (MediaPipe Face Landmarker).** Checks face present, centred, large enough, frontal, sharp and well lit; auto-captures when good. Sends a **tightly cropped, aligned face** — this fixes the detection failures that led to `DETECTOR = "skip"`. | `app/student/verify`, `app/student/enroll` | ☐ |
-| 2.2 | **Enable server detection/alignment** (RetinaFace, MTCNN fallback) on the pre-cropped face for consistent embeddings. | `face_service.py` | ☐ |
-| 2.3 | **Real liveness.** MediaPipe eye-aspect-ratio blink + random head-turn challenge in the browser; optional server anti-spoof model (e.g. DeepFace `anti_spoofing=True`) to reject photos and screens. Replace the current non-functional blink heuristic. | verify page, backend | ☐ |
-| 2.4 | **Guided multi-pose enrollment** (3–5 shots: front, left, right, different lighting). Store each embedding; match against the **best** sample instead of an averaged embedding. | enroll page, `face_service.py` | ☐ |
-| 2.5 | **Calibrated threshold.** Measure genuine vs impostor scores on real users, pick the threshold from data; backend is the single source of truth (UI currently says 70%, server uses 65%). | backend, verify page | ☐ |
-| 2.6 | **Adaptive templates.** After a high-confidence match, store that embedding as an extra sample (capped) to keep up with haircuts, glasses, ageing. | `face_service.py` | ☐ |
-| 2.7 | **Smaller payload.** Send a ~320–480px cropped JPEG at ~0.85 quality; show "Uploading → Matching" progress. | verify page | ☐ |
+| 2.1 | **Browser-side face quality gate (MediaPipe Face Landmarker).** Checks face present, centred, large enough, frontal, sharp and well lit; auto-captures when good. Sends a **tightly cropped, aligned face** — this fixes the detection failures that led to `DETECTOR = "skip"`. | `app/student/verify`, `app/student/enroll` | ☑ |
+| 2.2 | **Enable server detection/alignment** (RetinaFace, MTCNN fallback) on the pre-cropped face for consistent embeddings. | `face_service.py` | ☑ |
+| 2.3 | **Real liveness.** MediaPipe eye-aspect-ratio blink + random head-turn challenge in the browser; optional server anti-spoof model (e.g. DeepFace `anti_spoofing=True`) to reject photos and screens. Replace the current non-functional blink heuristic. | verify page, backend | ◐ blink + random head-turn done; server anti-spoof model deferred (needs PyTorch) |
+| 2.4 | **Guided multi-pose enrollment** (3–5 shots: front, left, right, different lighting). Store each embedding; match against the **best** sample instead of an averaged embedding. | enroll page, `face_service.py` | ☑ |
+| 2.5 | **Calibrated threshold.** Measure genuine vs impostor scores on real users, pick the threshold from data; backend is the single source of truth (UI currently says 70%, server uses 65%). | backend, verify page | ◐ default 0.70 + `scripts/face_calibration.py`; recalibrate after ≥5 real users |
+| 2.6 | **Adaptive templates.** After a high-confidence match, store that embedding as an extra sample (capped) to keep up with haircuts, glasses, ageing. | `face_service.py` | ☑ |
+| 2.7 | **Smaller payload.** Send a ~320–480px cropped JPEG at ~0.85 quality; show "Uploading → Matching" progress. | verify page | ☑ |
 
 ## Phase 3 — GPS Accuracy & Anti-Spoofing
 
