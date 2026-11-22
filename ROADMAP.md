@@ -35,7 +35,7 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 2. ☑ Matric-number claims backfilled.
 3. ☑ Backend proxied through Next.js at `/backend` — one HTTPS origin for phones.
 4. ☑ `npm run demo` launcher; phone check-in tested end to end.
-5. ☐ `firebase deploy --only firestore:rules`.
+5. ☑ Firestore rules deployed (2026-11-22). Previous fully-open rules replaced; anonymous reads now return 403.
 
 ### Known limitations (follow-ups)
 
