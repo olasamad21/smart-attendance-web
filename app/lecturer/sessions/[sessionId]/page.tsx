@@ -337,22 +337,22 @@ export default function LiveSessionPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 text-center">
                 <p className="text-2xl font-bold text-on-surface">{attended.length}</p>
                 <p className="text-[10px] text-on-surface-variant mt-1">Present</p>
               </div>
-              <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 text-center">
                 <p className="text-2xl font-bold text-on-surface">{absent.length}</p>
                 <p className="text-[10px] text-on-surface-variant mt-1">Absent</p>
               </div>
-              <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 text-center">
                 <p className="text-2xl font-bold text-on-surface">{enrolledStudents.length}</p>
                 <p className="text-[10px] text-on-surface-variant mt-1">Total</p>
               </div>
             </div>
 
             {/* Attendance Table */}
-            <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden mb-4">
+            <div className="bg-surface-container-lowest rounded-2xl shadow-card border border-outline-variant/30 overflow-hidden mb-4">
               {/* Table header */}
               <div className="grid grid-cols-[2rem_1fr_3rem_3rem_3rem] gap-1 px-4 py-3 border-b border-surface-variant bg-surface-container-low/50">
                 <span className="text-[10px] font-bold text-on-surface-variant">#</span>
@@ -434,8 +434,8 @@ export default function LiveSessionPage() {
 
       {/* End Session Dialog */}
       {showEndDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative shadow-raised animate-scale-in">
             <h3 className="text-xl font-bold text-on-surface mb-2">End Session</h3>
             <p className="text-sm text-on-surface-variant mb-6">Are you sure you want to end this session?</p>
             
@@ -470,8 +470,8 @@ export default function LiveSessionPage() {
 
       {/* Start Phase 2 Dialog */}
       {showPhase2Dialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative shadow-raised animate-scale-in">
             <h3 className="text-xl font-bold text-on-surface mb-2">Start Sign Out</h3>
             <p className="text-sm text-on-surface-variant mb-6">Skip the waiting period and start the sign out phase immediately.</p>
             
@@ -513,8 +513,8 @@ export default function LiveSessionPage() {
 
       {/* Manual Override Modal */}
       {overrideStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm card-shadow relative shadow-raised animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-warning-container text-on-warning-container flex items-center justify-center">
                 <span className="material-symbols-outlined text-2xl">edit_note</span>

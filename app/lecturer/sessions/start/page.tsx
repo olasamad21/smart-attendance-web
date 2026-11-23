@@ -196,7 +196,7 @@ export default function StartSessionPage() {
   return (
     <div className="bg-background">
       <TopAppBar title="Start Session" showBack />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-2xl mx-auto pb-8">
         {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
 
         {/* Course Header */}
@@ -216,7 +216,7 @@ export default function StartSessionPage() {
           </div>
 
           {classrooms.length === 0 && !selectedClassroom ? (
-            <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/30">
+            <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 border border-outline-variant/30">
               <EmptyState
                 icon="location_off"
                 title="No classrooms"
@@ -408,11 +408,11 @@ export default function StartSessionPage() {
       {/* ══════════ Classroom Bottom Sheet ══════════ */}
       {showClassroomSheet && (
         <div
-          className="fixed inset-0 bg-black/50 z-[100] flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-6"
           onClick={() => setShowClassroomSheet(false)}
         >
           <div
-            className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg flex flex-col animate-in slide-in-from-bottom duration-300"
+            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full max-w-lg flex flex-col shadow-raised animate-fade-up"
             style={{ maxHeight: '70vh' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -470,7 +470,7 @@ export default function StartSessionPage() {
           onClick={() => { setShowAddClassroom(false); setClassroomError(''); }}
         >
           <div
-            className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg flex flex-col animate-in slide-in-from-bottom duration-300"
+            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full max-w-lg flex flex-col shadow-raised animate-fade-up"
             style={{ maxHeight: '90vh' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -486,12 +486,12 @@ export default function StartSessionPage() {
               )}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant">Classroom Name</label>
+                  <label className="field-label">Classroom Name</label>
                   <input
                     value={classroomForm.name}
                     onChange={e => setClassroomForm({ ...classroomForm, name: e.target.value })}
                     placeholder="e.g. Lecture Hall 1"
-                    className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="field-input"
                   />
                 </div>
                 <button

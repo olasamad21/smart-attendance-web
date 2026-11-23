@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/utils/validation';
 import { loginUser } from '@/lib/firebase/auth.service';
 import { useAuthStore } from '@/store/auth.store';
-import TopAppBar from '@/components/layout/TopAppBar';
+import AuthShell from '@/components/layout/AuthShell';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,14 +48,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface flex flex-col min-h-screen">
-      <TopAppBar isAuth />
-
-      <main className="flex-1 px-5 py-6 flex flex-col w-full max-w-md mx-auto">
-        <div className="mb-6 pt-4">
-          <h2 className="text-2xl font-bold text-on-surface mb-2">Welcome back.</h2>
-          <p className="text-sm text-on-surface-variant">Please log in to continue verification.</p>
-        </div>
+    <AuthShell title="Welcome back" subtitle="Sign in to check in to class or manage your sessions.">
 
         {error && (
           <div className="mb-4 p-4 bg-error-container rounded-lg flex items-center gap-2">
@@ -67,29 +60,29 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           {/* Email */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-on-surface-variant">Email</label>
+            <label className="field-label">Email</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline" style={{fontSize: '20px'}}>mail</span>
+              <span className="material-symbols-outlined field-icon">mail</span>
               <input
                 {...register('email')}
                 type="email"
                 placeholder="student@university.edu"
-                className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11"
               />
             </div>
-            {errors.email && <p className="text-sm font-semibold text-error">{errors.email.message}</p>}
+            {errors.email && <p className="field-error">{errors.email.message}</p>}
           </div>
 
           {/* Password */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-on-surface-variant">Password</label>
+            <label className="field-label">Password</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline" style={{fontSize: '20px'}}>lock</span>
+              <span className="material-symbols-outlined field-icon">lock</span>
               <input
                 {...register('password')}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
-                className="w-full h-12 pl-10 pr-12 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11 pr-12"
               />
               <button
                 type="button"
@@ -101,7 +94,7 @@ export default function LoginPage() {
                 </span>
               </button>
             </div>
-            {errors.password && <p className="text-sm font-semibold text-error">{errors.password.message}</p>}
+            {errors.password && <p className="field-error">{errors.password.message}</p>}
             <div className="flex justify-end mt-1">
               <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">Forgot password?</Link>
             </div>
@@ -111,14 +104,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full h-12 bg-primary-container text-on-primary-container text-sm font-semibold rounded-full shadow-sm hover:shadow-md hover:bg-primary-container/90 active:scale-95 disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+            className="mt-2 w-full h-12 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-card hover:brightness-110 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-on-primary-container border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
                 Signing in...
               </>
-            ) : 'Log In'}
+            ) : 'Sign in'}
           </button>
 
           {/* Divider */}
@@ -135,7 +128,6 @@ export default function LoginPage() {
             </p>
           </div>
         </form>
-      </main>
-    </div>
+    </AuthShell>
   );
 }

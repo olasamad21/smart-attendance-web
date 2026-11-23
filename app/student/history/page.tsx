@@ -78,11 +78,11 @@ export default function AttendanceHistoryPage() {
   return (
     <div className="bg-background">
       <TopAppBar title="Attendance" />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-lg md:max-w-4xl mx-auto pb-8">
         <select 
           value={selectedCourseId} 
           onChange={(e) => setSelectedCourseId(e.target.value)}
-          className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary mb-4"
+          className="field-input mb-4 md:max-w-xs"
         >
           <option value="all">All Courses</option>
           {courses.map(c => (
@@ -99,7 +99,7 @@ export default function AttendanceHistoryPage() {
             description="Your attendance history will appear here after you check into your first session."
           />
         ) : (
-          <div className="flex flex-col gap-4 mt-4">
+          <div className="grid md:grid-cols-2 gap-4 mt-4">
             {filteredRecords.map((record) => {
               const dateDisplay = toDate(record.timestamp).toLocaleDateString(undefined, {
                 weekday: 'short',
@@ -108,15 +108,15 @@ export default function AttendanceHistoryPage() {
                 year: 'numeric'
               });
 
-              let remarkColor = 'bg-surface-container text-on-surface-variant';
-              if (record.remark === 'Present') {
-                remarkColor = 'bg-secondary-container/30 text-on-secondary-container';
+              let remarkColor = 'bg-warning-container text-on-warning-container';
+              if (record.remark?.startsWith('Present')) {
+                remarkColor = 'bg-success-container text-on-success-container';
               } else if (record.remark === 'Absent' || record.remark === 'Failed') {
                 remarkColor = 'bg-error-container text-on-error-container';
               }
 
               return (
-                <div key={record.attendanceId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow flex flex-col gap-3">
+                <div key={record.attendanceId} className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold text-on-surface text-base">{record.displayTitle}</h3>
@@ -130,17 +130,17 @@ export default function AttendanceHistoryPage() {
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`text-xs px-2 py-1 rounded-md font-medium ${
                       record.phase1Score > 0 
-                        ? 'bg-secondary-container/30 text-on-secondary-container' 
+                        ? 'bg-success-container text-on-success-container' 
                         : 'bg-surface-container text-on-surface-variant'
                     }`}>
-                      P1
+                      Check-in
                     </span>
                     <span className={`text-xs px-2 py-1 rounded-md font-medium ${
                       record.phase2Score > 0 
-                        ? 'bg-secondary-container/30 text-on-secondary-container' 
+                        ? 'bg-success-container text-on-success-container' 
                         : 'bg-surface-container text-on-surface-variant'
                     }`}>
-                      P2
+                      Check-out
                     </span>
                     <div className="flex-1"></div>
                     <span className="text-sm font-medium text-on-surface">

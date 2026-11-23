@@ -195,7 +195,7 @@ export default function ReportsPage() {
     return (
       <div className="bg-background">
         <TopAppBar title="Reports" showBack={true} />
-        <main className="px-5 pt-6 max-w-lg mx-auto flex justify-center mt-20">
+        <main className="px-4 sm:px-6 pt-6 max-w-4xl mx-auto flex justify-center mt-20">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </main>
       </div>
@@ -206,7 +206,7 @@ export default function ReportsPage() {
     <div className="bg-background">
       <TopAppBar title="Reports" showBack={true} />
 
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-4xl mx-auto pb-8">
         {/* Course header */}
         {course && (
           <div className="mb-6">
@@ -263,7 +263,7 @@ export default function ReportsPage() {
           ) : (
             <div className="flex flex-col gap-3">
               {sessions.map(s => (
-                <div key={s.sessionId} className="flex items-center gap-2 bg-surface-container-lowest rounded-2xl card-shadow border border-outline-variant/20 hover:border-primary/40 transition-all">
+                <div key={s.sessionId} className="flex items-center gap-2 bg-surface-container-lowest rounded-2xl shadow-card border border-outline-variant/30 hover:border-primary/40 transition-all">
                   <Link href={`/lecturer/sessions/${s.sessionId}`} className="flex-1 p-4">
                     <div className="flex items-center justify-between">
                       <div>

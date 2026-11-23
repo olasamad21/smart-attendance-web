@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import StudentBottomNav from '@/components/layout/StudentBottomNav';
+import { StudentSidebar } from '@/components/layout/LecturerSidebar';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,9 +33,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className={`bg-background ${fullScreen ? '' : 'pb-20'}`}>
+    <div className={`bg-background min-h-dvh ${fullScreen ? '' : 'pb-20 md:pb-0 md:pl-60'}`}>
+      {!fullScreen && <StudentSidebar />}
       {children}
-      {!fullScreen && <StudentBottomNav />}
+      {!fullScreen && <div className="md:hidden"><StudentBottomNav /></div>}
     </div>
   );
 }

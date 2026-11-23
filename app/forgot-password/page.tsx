@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import TopAppBar from '@/components/layout/TopAppBar';
+import AuthShell from '@/components/layout/AuthShell';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -39,29 +39,16 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <TopAppBar isAuth showBack />
-
-      <main className="flex-1 flex flex-col justify-center px-6 max-w-md mx-auto w-full pb-12">
+    <AuthShell back title={sent ? 'Check your inbox' : 'Reset your password'}
+      subtitle={sent ? undefined : "Enter your account's email and we'll send you a reset link."}>
         {!sent ? (
           <>
-            {/* Heading */}
-            <div className="mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-primary-container/30 flex items-center justify-center mb-5">
-                <span className="material-symbols-outlined text-primary text-3xl" style={{fontVariationSettings:"'FILL' 1"}}>lock_reset</span>
-              </div>
-              <h2 className="text-2xl font-bold text-on-surface mb-2">Reset your password</h2>
-              <p className="text-sm text-on-surface-variant">
-                Enter the email associated with your account and we&apos;ll send you a link to reset your password.
-              </p>
-            </div>
-
             {/* Form */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Email Address</label>
+                <label className="field-label">Email address</label>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-xl">mail</span>
+                  <span className="material-symbols-outlined field-icon">mail</span>
                   <input
                     type="email"
                     value={email}
@@ -69,7 +56,7 @@ export default function ForgotPasswordPage() {
                     placeholder="student@university.edu"
                     autoComplete="email"
                     autoFocus
-                    className="w-full h-12 pl-11 pr-4 bg-surface-container-lowest border border-outline-variant rounded-xl text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    className="field-input pl-11"
                   />
                 </div>
               </div>
@@ -84,11 +71,11 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="mt-2 w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-bold active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="mt-2 w-full h-12 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-card hover:brightness-110 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-on-primary-container border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
                     Sending...
                   </>
                 ) : 'Send Reset Link'}
@@ -106,20 +93,18 @@ export default function ForgotPasswordPage() {
             <div className="w-20 h-20 rounded-full bg-secondary-container/30 flex items-center justify-center mx-auto mb-6">
               <span className="material-symbols-outlined text-primary text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>mark_email_read</span>
             </div>
-            <h2 className="text-2xl font-bold text-on-surface mb-2">Check your inbox</h2>
             <p className="text-sm text-on-surface-variant mb-8 max-w-xs mx-auto">
               If an account exists for <strong className="text-on-surface">{email}</strong>, we&apos;ve sent a password reset link. Check your spam folder too.
             </p>
             <button
               onClick={() => router.push('/login')}
-              className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-card hover:brightness-110 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
               Back to Login
             </button>
           </div>
         )}
-      </main>
-    </div>
+    </AuthShell>
   );
 }

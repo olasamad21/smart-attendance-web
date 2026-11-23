@@ -8,7 +8,7 @@ import { registerSchema, RegisterInput } from '@/lib/utils/validation';
 import { registerUser } from '@/lib/firebase/auth.service';
 import { useAuthStore } from '@/store/auth.store';
 
-import TopAppBar from '@/components/layout/TopAppBar';
+import AuthShell from '@/components/layout/AuthShell';
 
 const DEPARTMENTS = [
   'Computer Science', 'Software Engineering', 'Cyber Security',
@@ -71,14 +71,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface flex flex-col min-h-screen">
-      <TopAppBar isAuth showBack />
-
-      <main className="flex-1 px-5 py-6 w-full max-w-md mx-auto overflow-y-auto pb-10">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-on-surface">Create your account.</h2>
-          <p className="text-sm text-on-surface-variant mt-1">Join EduVerify for smart attendance tracking.</p>
-        </div>
+    <AuthShell title="Create your account" subtitle="Takes a minute. Students set up face verification right after." back>
 
         {error && (
           <div className="mb-4 p-3 bg-error-container rounded-lg flex items-center gap-2">
@@ -98,13 +91,13 @@ export default function RegisterPage() {
                   key={role}
                   type="button"
                   onClick={() => setValue('role', role)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all active:scale-95 ${
+                  className={`p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${
                     selectedRole === role
                       ? 'border-primary bg-primary/5'
                       : 'border-outline-variant bg-surface-container-lowest'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-2xl mb-1 block" style={selectedRole === role ? {fontVariationSettings: "'FILL' 1", color: '#00535b'} : {color: '#6f797a'}}>
+                  <span className={`material-symbols-outlined text-2xl mb-1 block ${selectedRole === role ? 'text-primary' : 'text-outline'}`} style={selectedRole === role ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                     {role === 'lecturer' ? 'school' : 'person'}
                   </span>
                   <span className={`text-sm font-semibold capitalize ${selectedRole === role ? 'text-primary' : 'text-on-surface-variant'}`}>
@@ -117,40 +110,40 @@ export default function RegisterPage() {
 
           {/* Full Name */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-on-surface-variant">Full Name</label>
+            <label className="field-label">Full Name</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline text-xl">badge</span>
+              <span className="material-symbols-outlined field-icon">badge</span>
               <input {...register('name')} placeholder="John Doe"
-                className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11"
               />
             </div>
-            {errors.name && <p className="text-xs text-error">{errors.name.message}</p>}
+            {errors.name && <p className="field-error">{errors.name.message}</p>}
           </div>
 
           {/* Email */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-on-surface-variant">Email Address</label>
+            <label className="field-label">Email Address</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline text-xl">mail</span>
+              <span className="material-symbols-outlined field-icon">mail</span>
               <input {...register('email')} type="email" placeholder="student@university.edu"
-                className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11"
               />
             </div>
-            {errors.email && <p className="text-xs text-error">{errors.email.message}</p>}
+            {errors.email && <p className="field-error">{errors.email.message}</p>}
           </div>
 
           {/* Department */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-on-surface-variant">Department</label>
+            <label className="field-label">Department</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline text-xl">apartment</span>
+              <span className="material-symbols-outlined field-icon">apartment</span>
               <select {...register('department')}
-                className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+                className="field-input pl-11"
               >
                 <option value="">Select department</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
-              <span className="material-symbols-outlined absolute right-3 text-outline text-xl pointer-events-none">expand_more</span>
+              <span className="material-symbols-outlined absolute right-3.5 text-outline text-xl pointer-events-none">expand_more</span>
             </div>
           </div>
 
@@ -158,36 +151,36 @@ export default function RegisterPage() {
           {selectedRole === 'student' && (
             <>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant">Matric Number</label>
+                <label className="field-label">Matric Number</label>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-xl">tag</span>
+                  <span className="material-symbols-outlined field-icon">tag</span>
                   <input {...register('matricNumber')} placeholder="e.g. CSC/2021/001"
-                    className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                    className="field-input pl-11"
                   />
                 </div>
-                {errors.matricNumber && <p className="text-xs text-error mt-1">{errors.matricNumber.message}</p>}
+                {errors.matricNumber && <p className="field-error">{errors.matricNumber.message}</p>}
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant">Confirm Matric Number</label>
+                <label className="field-label">Confirm Matric Number</label>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-xl">tag</span>
+                  <span className="material-symbols-outlined field-icon">tag</span>
                   <input {...register('confirmMatricNumber')} placeholder="e.g. CSC/2021/001"
-                    className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                    className="field-input pl-11"
                   />
                 </div>
-                {errors.confirmMatricNumber && <p className="text-xs text-error mt-1">{errors.confirmMatricNumber.message}</p>}
+                {errors.confirmMatricNumber && <p className="field-error">{errors.confirmMatricNumber.message}</p>}
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant">Level</label>
+                <label className="field-label">Level</label>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-xl">trending_up</span>
+                  <span className="material-symbols-outlined field-icon">trending_up</span>
                   <select {...register('level')}
-                    className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+                    className="field-input pl-11"
                   >
                     <option value="">Select level</option>
                     {LEVELS.map(l => <option key={l} value={l}>{l} Level</option>)}
                   </select>
-                  <span className="material-symbols-outlined absolute right-3 text-outline text-xl pointer-events-none">expand_more</span>
+                  <span className="material-symbols-outlined absolute right-3.5 text-outline text-xl pointer-events-none">expand_more</span>
                 </div>
               </div>
             </>
@@ -195,36 +188,36 @@ export default function RegisterPage() {
 
           {/* Password */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-on-surface-variant">Password</label>
+            <label className="field-label">Password</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline text-xl">lock</span>
+              <span className="material-symbols-outlined field-icon">lock</span>
               <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="Min. 8 chars with a number"
-                className="w-full h-12 pl-10 pr-12 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11 pr-12"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-outline w-8 h-8 flex items-center justify-center">
                 <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility' : 'visibility_off'}</span>
               </button>
             </div>
-            {errors.password && <p className="text-xs text-error">{errors.password.message}</p>}
+            {errors.password && <p className="field-error">{errors.password.message}</p>}
           </div>
 
           {/* Confirm Password */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-on-surface-variant">Confirm Password</label>
+            <label className="field-label">Confirm Password</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-outline text-xl">lock_reset</span>
+              <span className="material-symbols-outlined field-icon">lock_reset</span>
               <input {...register('confirmPassword')} type="password" placeholder="Repeat password"
-                className="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="field-input pl-11"
               />
             </div>
-            {errors.confirmPassword && <p className="text-xs text-error">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && <p className="field-error">{errors.confirmPassword.message}</p>}
           </div>
 
           <button type="submit" disabled={loading}
-            className="mt-2 w-full h-12 bg-primary-container text-on-primary-container text-sm font-semibold rounded-full shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+            className="mt-2 w-full h-12 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-card hover:brightness-110 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
-              <><div className="w-4 h-4 border-2 border-on-primary-container border-t-transparent rounded-full animate-spin" />Creating account...</>
+              <><div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />Creating account...</>
             ) : 'Create Account'}
           </button>
 
@@ -233,8 +226,6 @@ export default function RegisterPage() {
             <Link href="/login" className="text-primary font-semibold hover:underline">Log in</Link>
           </p>
         </form>
-      </main>
-
       {/* Confirmation Modal */}
       {showConfirmModal && pendingData && (
         <div 
@@ -283,7 +274,7 @@ export default function RegisterPage() {
               <button 
                 onClick={() => finalizeRegistration(pendingData)}
                 disabled={loading}
-                className="flex-1 h-12 rounded-full bg-primary-container text-on-primary-container font-bold text-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 h-12 rounded-full bg-primary text-on-primary font-bold text-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : 'Confirm & Register'}
               </button>
@@ -291,6 +282,6 @@ export default function RegisterPage() {
           </div>
         </div>
       )}
-    </div>
+    </AuthShell>
   );
 }

@@ -10,6 +10,7 @@ import { averagePosition, suggestRadius } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
 import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 import { useToast } from '@/components/ui/Toast';
+import { SkeletonCards } from '@/components/ui/Skeleton';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), { 
   ssr: false,
@@ -106,7 +107,7 @@ export default function ClassroomsPage() {
   return (
     <div className="bg-background">
       <TopAppBar title="Classrooms" />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-5xl mx-auto pb-8">
         {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-on-surface-variant">{classrooms.length} classroom{classrooms.length !== 1 ? 's' : ''}</p>
@@ -118,7 +119,7 @@ export default function ClassroomsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          <SkeletonCards count={3} className="h-24" />
         ) : classrooms.length === 0 ? (
           <EmptyState
             icon="location_on"
@@ -132,9 +133,9 @@ export default function ClassroomsPage() {
             }
           />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {classrooms.map(room => (
-              <div key={room.classroomId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20">
+              <div key={room.classroomId} className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -160,11 +161,11 @@ export default function ClassroomsPage() {
 
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[100] flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-6"
           onClick={() => { setShowModal(false); setError(''); }}
         >
           <div 
-            className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg flex flex-col"
+            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full max-w-lg flex flex-col shadow-raised animate-fade-up"
             style={{maxHeight: '90vh'}}
             onClick={(e) => e.stopPropagation()}
           >
@@ -180,12 +181,12 @@ export default function ClassroomsPage() {
               )}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant">Classroom Name</label>
+                  <label className="field-label">Classroom Name</label>
                   <input
                     value={form.name}
                     onChange={e => setForm({...form, name: e.target.value})}
                     placeholder="e.g. Lecture Hall 1"
-                    className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="field-input"
                   />
                 </div>
                 <button

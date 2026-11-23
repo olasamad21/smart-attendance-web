@@ -17,12 +17,12 @@ const variantStyles = {
   info: {
     iconBg: 'bg-primary/10',
     iconColor: 'text-primary',
-    confirmBg: 'bg-primary-container text-on-primary-container',
+    confirmBg: 'bg-primary text-on-primary',
   },
   warning: {
-    iconBg: 'bg-amber-100 dark:bg-amber-900/30',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    confirmBg: 'bg-primary-container text-on-primary-container',
+    iconBg: 'bg-warning-container',
+    iconColor: 'text-on-warning-container',
+    confirmBg: 'bg-primary text-on-primary',
   },
   destructive: {
     iconBg: 'bg-error-container/40',
@@ -69,7 +69,7 @@ export default function AppDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-5 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[160] flex items-center justify-center p-5 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -78,7 +78,7 @@ export default function AppDialog({
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby={description ? 'dialog-desc' : undefined}
-        className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-[320px] card-shadow animate-in zoom-in-95 fade-in duration-200"
+        className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-[320px] shadow-raised animate-scale-in"
         onClick={e => e.stopPropagation()}
       >
         {/* Icon */}

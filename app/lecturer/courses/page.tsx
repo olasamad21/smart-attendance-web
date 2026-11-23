@@ -8,6 +8,7 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import { SkeletonCards } from '@/components/ui/Skeleton';
 
 export default function LecturerCoursesPage() {
   const { user } = useAuthStore();
@@ -75,7 +76,7 @@ export default function LecturerCoursesPage() {
   return (
     <div className="bg-background">
       <TopAppBar title="My Courses" />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-5xl mx-auto pb-8">
 
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-on-surface-variant">{courses.length} course{courses.length !== 1 ? 's' : ''}</p>
@@ -87,7 +88,7 @@ export default function LecturerCoursesPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          <SkeletonCards count={3} className="h-24" />
         ) : courses.length === 0 ? (
           <EmptyState
             icon="menu_book"
@@ -101,9 +102,9 @@ export default function LecturerCoursesPage() {
             }
           />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {courses.map((course) => (
-              <div key={course.courseId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20 relative overflow-hidden">
+              <div key={course.courseId} className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
                 <div className="pl-4 flex items-center justify-between gap-3">
                   <div className="flex-1">
@@ -136,11 +137,11 @@ export default function LecturerCoursesPage() {
       {/* Create Modal */}
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[100] flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-6"
           onClick={() => setShowModal(false)}
         >
           <div 
-            className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg flex flex-col" 
+            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full max-w-lg flex flex-col shadow-raised animate-fade-up" 
             style={{maxHeight: '90vh'}}
             onClick={(e) => e.stopPropagation()}
           >
@@ -154,21 +155,21 @@ export default function LecturerCoursesPage() {
               {formError && <div className="mb-4 p-3 bg-error-container rounded-lg text-sm text-on-error-container">{formError}</div>}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant">Course Title</label>
+                  <label className="field-label">Course Title</label>
                   <input value={form.courseTitle} onChange={e => setForm({...form, courseTitle: e.target.value})}
                     placeholder="e.g. Introduction to Computer Science"
-                    className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="field-input"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant">Course Code</label>
+                  <label className="field-label">Course Code</label>
                   <input value={form.courseCode} onChange={e => setForm({...form, courseCode: e.target.value.toUpperCase()})}
                     placeholder="e.g. CSC411"
-                    className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm font-mono text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="field-input font-mono"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-on-surface-variant">Default Session Duration</label>
+                  <label className="field-label">Default Session Duration</label>
                   <div className="flex gap-2 flex-wrap">
                     {durations.map(d => (
                       <button key={d} onClick={() => setForm({...form, defaultDuration: d})}
@@ -180,15 +181,15 @@ export default function LecturerCoursesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant">Sign In Marks</label>
+                    <label className="field-label">Sign In Marks</label>
                     <input type="number" min="0" step="0.5" value={form.phase1Marks} onChange={e => setForm({...form, phase1Marks: Number(e.target.value)})}
-                      className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="field-input"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant">Sign Out Marks</label>
+                    <label className="field-label">Sign Out Marks</label>
                     <input type="number" min="0" step="0.5" value={form.phase2Marks} onChange={e => setForm({...form, phase2Marks: Number(e.target.value)})}
-                      className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="field-input"
                     />
                   </div>
                 </div>

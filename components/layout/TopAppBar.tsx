@@ -17,9 +17,8 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
   const initials = user?.name?.charAt(0).toUpperCase() || '?';
   const isLecturer = user?.role === 'lecturer';
   const profileUrl = isLecturer ? '/lecturer/profile' : '/student/profile';
-  // Lecturer pages use the full width (with a sidebar on desktop); student pages are a
-  // phone-width column, so the bar lines up with that column.
-  const rowWidth = isLecturer ? 'max-w-none px-4 sm:px-6' : 'max-w-lg px-4 sm:px-5';
+  // Both roles have a sidebar on tablet/desktop, so the bar spans the full width.
+  const rowWidth = 'max-w-none px-4 sm:px-6';
 
   if (isAuth) {
     return (
@@ -66,13 +65,13 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
             </>
           ) : (
             <div className="flex items-baseline gap-2 truncate">
-              {/* On desktop the lecturer sidebar already shows the brand. */}
-              <h1 className={`text-xl font-bold text-primary tracking-tight shrink-0 ${isLecturer ? 'md:hidden' : ''}`}>
+              {/* On tablet/desktop the sidebar already shows the brand. */}
+              <h1 className={`text-xl font-bold text-primary tracking-tight shrink-0 md:hidden`}>
                 EduVerify
               </h1>
               {title && (
                 <>
-                  <span className={`text-on-surface-variant/40 shrink-0 ${isLecturer ? 'md:hidden' : ''}`}>|</span>
+                  <span className={`text-on-surface-variant/40 shrink-0 md:hidden`}>|</span>
                   <span className="text-lg font-semibold text-on-surface truncate">{title}</span>
                 </>
               )}

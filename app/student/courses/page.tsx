@@ -131,11 +131,11 @@ export default function StudentCoursesPage() {
   return (
     <div className="bg-background">
       <TopAppBar title="Courses" />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-lg md:max-w-5xl mx-auto pb-8">
         {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
 
         {/* Segmented control */}
-        <div className="flex gap-1 bg-surface-container-high p-1 rounded-xl mb-6">
+        <div className="flex gap-1 bg-surface-container-high p-1 rounded-xl mb-6 md:max-w-md">
           {(['my', 'join'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 h-10 rounded-lg text-sm font-semibold transition-all active:scale-95 ${tab === t ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface-variant'}`}>
@@ -160,7 +160,7 @@ export default function StudentCoursesPage() {
               }
             />
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               {courses.map(course => {
                 const session = activeSessions[course.courseId];
                 const record = studentRecords[course.courseId];
@@ -209,7 +209,7 @@ export default function StudentCoursesPage() {
                     );
                   } else if ((phaseInfo.status === 'phase2_open' && isPhase2Done) || (phaseInfo.status === 'ended' && (isPhase1Done || isPhase2Done))) {
                     buttonState = (
-                      <button disabled className="mt-3 w-full h-10 bg-green-100 border border-green-300 text-green-800 disabled:opacity-100 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300 rounded-full text-xs font-semibold flex items-center justify-center gap-1">
+                      <button disabled className="mt-3 w-full h-10 bg-success-container text-on-success-container disabled:opacity-100 rounded-full text-xs font-semibold flex items-center justify-center gap-1">
                         <span className="material-symbols-outlined text-base">task_alt</span>
                         Attendance Completed
                       </button>
@@ -227,7 +227,7 @@ export default function StudentCoursesPage() {
                 };
 
                 return (
-                <div key={course.courseId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20 relative overflow-hidden">
+                <div key={course.courseId} className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 relative overflow-hidden">
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${session ? 'bg-primary' : 'bg-secondary-container'}`} />
                   <div className="pl-4">
                     <div className="flex items-center gap-2 flex-wrap w-full">
@@ -252,7 +252,7 @@ export default function StudentCoursesPage() {
             </div>
           )
         ) : (
-          <div className="bg-surface-container-lowest rounded-2xl p-6 card-shadow">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-card border border-outline-variant/30 max-w-md mx-auto">
             <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-primary text-3xl">search</span>
             </div>
@@ -260,7 +260,7 @@ export default function StudentCoursesPage() {
             <p className="text-sm text-on-surface-variant text-center mb-6">Enter the course code and password from your lecturer</p>
 
             {joinMsg && (
-              <div className={`mb-4 p-3 rounded-lg text-sm ${joinMsg.type === 'success' ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-error-container text-on-error-container'}`}>
+              <div className={`mb-4 p-3 rounded-lg text-sm ${joinMsg.type === 'success' ? 'bg-success-container text-on-success-container' : 'bg-error-container text-on-error-container'}`}>
                 {joinMsg.text}
               </div>
             )}
@@ -268,11 +268,11 @@ export default function StudentCoursesPage() {
             <div className="flex flex-col gap-3 mb-4">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase())}
                 placeholder="Course Code (e.g. CSC411)"
-                className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-center font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="field-input text-center font-bold"
               />
               <input value={enrollmentKey} onChange={e => setEnrollmentKey(e.target.value.toUpperCase().slice(0,8))}
                 placeholder="Password (e.g. X7B9K2M4)"
-                className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg text-center font-mono tracking-widest text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="field-input text-center font-mono tracking-widest"
               />
             </div>
             <button onClick={handleJoin} disabled={joining || !code || enrollmentKey.length !== 8}

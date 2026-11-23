@@ -98,7 +98,7 @@ export default function CourseDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
-        <div className="w-10 h-10 border-4 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -106,8 +106,8 @@ export default function CourseDetailPage() {
   if (!course) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500">Course not found</p>
-        <Link href="/lecturer/courses" className="text-[#2D6A4F] mt-2 inline-block">Go back</Link>
+        <p className="text-on-surface-variant">Course not found</p>
+        <Link href="/lecturer/courses" className="text-primary font-semibold mt-2 inline-block">Go back</Link>
       </div>
     );
   }
@@ -121,9 +121,9 @@ export default function CourseDetailPage() {
         showBack={true} 
       />
       
-      <main className="px-5 pt-6 max-w-lg mx-auto">
+      <main className="px-4 sm:px-6 pt-6 max-w-3xl mx-auto">
         {/* Course Info Card */}
-        <div className="bg-surface-container-lowest rounded-2xl p-6 card-shadow mb-6">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-card border border-outline-variant/30 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-2xl font-bold text-on-surface">{course.courseTitle}</h1>
@@ -149,7 +149,7 @@ export default function CourseDetailPage() {
                   </button>
                 </div>
                 {showPassword && (
-                  <p className="text-lg font-mono font-bold text-on-surface tracking-widest mt-0.5 animate-in fade-in slide-in-from-top-1 duration-200">{course.enrollmentKey}</p>
+                  <p className="text-lg font-mono font-bold text-on-surface tracking-widest mt-0.5 animate-fade-up">{course.enrollmentKey}</p>
                 )}
               </div>
               <button 
@@ -223,7 +223,7 @@ export default function CourseDetailPage() {
 
         {/* Recent Sessions */}
         {sessions.length > 0 && (
-          <div className="bg-surface-container-lowest rounded-2xl p-6 card-shadow">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-card border border-outline-variant/30">
             <h2 className="font-bold text-on-surface mb-4">Recent Sessions</h2>
             <div className="flex flex-col gap-3">
               {sessions.slice(0, 3).map(s => (
@@ -285,11 +285,11 @@ export default function CourseDetailPage() {
       {/* Edit Course Settings modal */}
       {editingCourse && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[100] flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-6"
           onClick={() => setEditingCourse(false)}
         >
           <div 
-            className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg flex flex-col" 
+            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full max-w-lg flex flex-col shadow-raised animate-fade-up" 
             style={{maxHeight: '90vh'}}
             onClick={(e) => e.stopPropagation()}
           >

@@ -5,15 +5,24 @@ import { useAuthStore } from '@/store/auth.store';
 import Icon from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
-export const LECTURER_NAV = [
+export interface NavItem { label: string; href: string; icon: string }
+
+export const LECTURER_NAV: NavItem[] = [
   { label: 'Home', href: '/lecturer/dashboard', icon: 'home' },
   { label: 'Courses', href: '/lecturer/courses', icon: 'school' },
   { label: 'Classrooms', href: '/lecturer/classrooms', icon: 'location_on' },
   { label: 'Profile', href: '/lecturer/profile', icon: 'person' },
 ];
 
-/** Desktop (md+) navigation rail for lecturers. On phones the bottom tab bar is used instead. */
-export default function LecturerSidebar() {
+export const STUDENT_NAV: NavItem[] = [
+  { label: 'Home', href: '/student/dashboard', icon: 'home' },
+  { label: 'Courses', href: '/student/courses', icon: 'school' },
+  { label: 'Attendance', href: '/student/history', icon: 'fact_check' },
+  { label: 'Profile', href: '/student/profile', icon: 'person' },
+];
+
+/** Tablet/desktop (md+) navigation rail. On phones the bottom tab bar is used instead. */
+export function AppSidebar({ nav, roleLabel }: { nav: NavItem[]; roleLabel: string }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
 
@@ -25,9 +34,9 @@ export default function LecturerSidebar() {
         </span>
         <span className="text-lg font-extrabold tracking-tight text-on-surface">EduVerify</span>
       </div>
-      <p className="px-5 mt-2 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Lecturer</p>
+      <p className="px-5 mt-2 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{roleLabel}</p>
       <nav className="flex-1 px-3 flex flex-col gap-1" aria-label="Main">
-        {LECTURER_NAV.map(item => {
+        {nav.map(item => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined}
@@ -52,4 +61,12 @@ export default function LecturerSidebar() {
       </div>
     </aside>
   );
+}
+
+export default function LecturerSidebar() {
+  return <AppSidebar nav={LECTURER_NAV} roleLabel="Lecturer" />;
+}
+
+export function StudentSidebar() {
+  return <AppSidebar nav={STUDENT_NAV} roleLabel="Student" />;
 }

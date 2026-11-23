@@ -105,7 +105,7 @@ export default function StudentDashboard() {
   return (
     <div className="bg-background min-h-dvh">
       <TopAppBar title="Home" />
-      <main className="px-4 sm:px-5 pt-5 max-w-lg mx-auto pb-8 flex flex-col gap-6">
+      <main className="px-4 sm:px-6 pt-5 max-w-lg md:max-w-5xl mx-auto pb-8 flex flex-col gap-6">
         <header className="animate-fade-up">
           <p className="text-xs font-semibold text-on-surface-variant">{today}</p>
           <h2 className="text-2xl font-bold text-on-surface mt-0.5">{getGreeting()}, {firstName}</h2>
@@ -126,6 +126,8 @@ export default function StudentDashboard() {
           </Card>
         )}
 
+        <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 items-start">
+          <div className="flex flex-col gap-6">
         {/* Live sessions */}
         <section aria-label="Live classes" className="flex flex-col gap-3">
           {isLoading ? (
@@ -145,10 +147,14 @@ export default function StudentDashboard() {
                 </Card>
               );
             }
-            return live.map(course => (
+            return (
+              <div className={live.length > 1 ? 'grid md:grid-cols-2 lg:grid-cols-1 gap-3' : 'flex flex-col gap-3'}>
+                {live.map(course => (
               <LiveSessionCard key={course.courseId} course={course}
                 session={activeSessions[course.courseId]} record={studentRecords[course.courseId] ?? null} />
-            ));
+                ))}
+              </div>
+            );
           })()}
         </section>
 
@@ -165,6 +171,7 @@ export default function StudentDashboard() {
             </div>
           </Card>
         </section>
+          </div>
 
         {/* Courses */}
         <section>
@@ -211,6 +218,7 @@ export default function StudentDashboard() {
             </div>
           )}
         </section>
+        </div>
       </main>
     </div>
   );

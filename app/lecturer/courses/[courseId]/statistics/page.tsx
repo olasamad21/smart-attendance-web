@@ -67,7 +67,7 @@ export default function StatisticsPage() {
     return (
       <div className="bg-background">
         <TopAppBar title="Statistics" showBack={true} />
-        <main className="px-5 pt-6 max-w-lg mx-auto flex justify-center mt-20">
+        <main className="px-4 sm:px-6 pt-6 max-w-4xl mx-auto flex justify-center mt-20">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </main>
       </div>
@@ -203,7 +203,7 @@ export default function StatisticsPage() {
     <div className="bg-background">
       <TopAppBar title="Statistics" showBack={true} />
 
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <main className="px-4 sm:px-6 pt-6 max-w-4xl mx-auto pb-8">
         {/* Course header */}
         {course && (
           <div className="mb-6">
@@ -214,11 +214,11 @@ export default function StatisticsPage() {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 text-center">
             <p className="text-3xl font-bold text-on-surface">{totalSessions}</p>
             <p className="text-[10px] text-on-surface-variant mt-1 uppercase tracking-wider font-semibold">Sessions</p>
           </div>
-          <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 text-center">
             <p className="text-3xl font-bold text-on-surface">{totalEnrolled}</p>
             <p className="text-[10px] text-on-surface-variant mt-1 uppercase tracking-wider font-semibold">Students</p>
           </div>
@@ -258,7 +258,7 @@ export default function StatisticsPage() {
 
             {/* Top Students */}
             {topStudents.length > 0 && (
-              <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden mb-6">
+              <div className="bg-surface-container-lowest rounded-2xl shadow-card border border-outline-variant/30 overflow-hidden mb-6">
                 <div className="flex items-center justify-between p-4 border-b border-surface-variant">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg" style={{fontVariationSettings:"'FILL' 1"}}>star</span>
@@ -292,7 +292,7 @@ export default function StatisticsPage() {
 
             {/* At-Risk Students */}
             {atRisk.length > 0 && (
-              <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden">
+              <div className="bg-surface-container-lowest rounded-2xl shadow-card border border-outline-variant/30 overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-surface-variant">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-error text-lg">warning</span>

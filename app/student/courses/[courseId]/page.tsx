@@ -11,6 +11,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import { toDate } from '@/lib/utils/session.utils';
 import { AttendanceRecord, Course, Session } from '@/types';
 import Skeleton, { SkeletonCards } from '@/components/ui/Skeleton';
+import ProgressRing from '@/components/ui/ProgressRing';
+import Badge from '@/components/ui/Badge';
 
 type TimelineItem = {
   session: Session;
@@ -80,37 +82,47 @@ export default function CourseHistoryPage() {
 
   return (
     <div className="bg-background">
-      <TopAppBar title="Course History" showBack />
-      <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+      <TopAppBar title="Course" showBack />
+      <main className="px-4 sm:px-6 pt-6 max-w-lg md:max-w-4xl mx-auto pb-8">
         {loading ? (
           <div className="flex flex-col gap-4"><Skeleton className="h-28 w-full rounded-2xl" /><SkeletonCards count={4} className="h-16" /></div>
         ) : (
           <>
-            {course && (
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-on-surface">{course.courseCode}</h2>
-                <p className="text-sm text-on-surface-variant">{course.courseTitle}</p>
-              </div>
-            )}
-            
-            <div className="flex gap-3 mb-6">
-              <div className="flex-1 bg-surface-container-lowest rounded-2xl p-3 card-shadow text-center flex flex-col items-center justify-center">
-                <span className="material-symbols-outlined text-primary mb-1 text-xl">event_available</span>
-                <p className="text-xl font-bold text-on-surface">{timeline.length}</p>
-                <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium mt-0.5">Sessions</p>
-              </div>
-              <div className="flex-1 bg-surface-container-lowest rounded-2xl p-3 card-shadow text-center flex flex-col items-center justify-center">
-                <span className="material-symbols-outlined text-primary mb-1 text-xl">stars</span>
-                <p className="text-xl font-bold text-on-surface">{totalScore}</p>
-                <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium mt-0.5">Score</p>
-              </div>
-              <div className="flex-1 bg-surface-container-lowest rounded-2xl p-3 card-shadow text-center flex flex-col items-center justify-center">
-                <span className="material-symbols-outlined text-primary mb-1 text-xl">analytics</span>
-                <p className="text-xl font-bold text-on-surface">{attendanceRate}%</p>
-                <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium mt-0.5">Attendance</p>
+            <div className="rounded-3xl bg-primary-container text-on-primary-container p-5 shadow-raised mb-6 animate-fade-up">
+              {course && (
+                <>
+                  <p className="text-xs font-bold opacity-80">{course.courseCode}</p>
+                  <h2 className="text-xl font-bold leading-tight">{course.courseTitle}</h2>
+                  {course.lecturerName && <p className="text-xs opacity-75 mt-0.5">{course.lecturerName}</p>}
+                </>
+              )}
+              <div className="mt-5 flex items-center gap-5">
+                <ProgressRing value={attendanceRate / 100} size={92} stroke={8}
+                  tone={timeline.length === 0 ? 'onPrimary' : attendanceRate >= 75 ? 'success' : 'warning'}
+                  label={`Attendance ${attendanceRate}%`}>
+                  <span className="text-xl font-extrabold tabular-nums">{timeline.length ? `${attendanceRate}%` : '—'}</span>
+                </ProgressRing>
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div>
+                    <dt className="text-[11px] opacity-75">Attended</dt>
+                    <dd className="text-lg font-bold tabular-nums">{timeline.filter(t => t.record).length}/{timeline.length}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] opacity-75">Total score</dt>
+                    <dd className="text-lg font-bold tabular-nums">{totalScore}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    {timeline.length > 0 && (
+                      <Badge tone={attendanceRate >= 75 ? 'success' : 'warning'} icon={attendanceRate >= 75 ? 'trending_up' : 'warning'}>
+                        {attendanceRate >= 75 ? 'On track' : 'Below 75%'}
+                      </Badge>
+                    )}
+                  </div>
+                </dl>
               </div>
             </div>
 
+            <h3 className="text-base font-semibold text-on-surface mb-3">Session history</h3>
             {timeline.length === 0 ? (
               <EmptyState
                 icon="history"
@@ -118,7 +130,7 @@ export default function CourseHistoryPage() {
                 description="Your attendance timeline will appear here once sessions begin."
               />
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 {timeline.map((item) => {
                   const record = item.record;
                   const timestamp = record?.timestamp || item.session.createdAt;
@@ -132,9 +144,9 @@ export default function CourseHistoryPage() {
                   const isAbsent = !record;
                   const remark = isAbsent ? 'Absent' : (record.remark || 'Unknown');
                   
-                  let remarkColor = 'bg-surface-container text-on-surface-variant';
-                  if (remark === 'Present') {
-                    remarkColor = 'bg-secondary-container/30 text-on-secondary-container';
+                  let remarkColor = 'bg-warning-container text-on-warning-container';
+                  if (remark.startsWith('Present')) {
+                    remarkColor = 'bg-success-container text-on-success-container';
                   } else if (remark === 'Absent' || remark === 'Failed') {
                     remarkColor = 'bg-error-container text-on-error-container';
                   }
@@ -144,7 +156,7 @@ export default function CourseHistoryPage() {
                   const total = record?.totalScore || 0;
 
                   return (
-                    <div key={item.session.sessionId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow flex flex-col gap-3">
+                    <div key={item.session.sessionId} className="bg-surface-container-lowest rounded-2xl p-4 shadow-card border border-outline-variant/30 flex flex-col gap-3">
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-semibold text-on-surface text-base">{item.displayTitle}</h3>
@@ -161,14 +173,14 @@ export default function CourseHistoryPage() {
                             ? 'bg-secondary-container/30 text-on-secondary-container' 
                             : 'bg-surface-container text-on-surface-variant'
                         }`}>
-                          P1
+                          Check-in
                         </span>
                         <span className={`text-xs px-2 py-1 rounded-md font-medium ${
                           p2Score > 0 
                             ? 'bg-secondary-container/30 text-on-secondary-container' 
                             : 'bg-surface-container text-on-surface-variant'
                         }`}>
-                          P2
+                          Check-out
                         </span>
                         <div className="flex-1"></div>
                         <span className="text-sm font-medium text-on-surface flex items-center gap-1">
