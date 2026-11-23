@@ -18,8 +18,8 @@ export function downloadPDF(options: PDFReportOptions): void {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // --- Header Section ---
-  // Green accent bar at top
-  doc.setFillColor(45, 106, 79); // Primary green
+  // Brand accent bar at top
+  doc.setFillColor(0, 83, 91); // Brand primary (#00535b)
   doc.rect(0, 0, pageWidth, 3, 'F');
 
   // Title
@@ -56,7 +56,7 @@ export function downloadPDF(options: PDFReportOptions): void {
     body: options.rows.map(row => row.map(cell => String(cell))),
     theme: 'grid',
     headStyles: {
-      fillColor: [45, 106, 79],
+      fillColor: [0, 83, 91],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8,
@@ -69,7 +69,7 @@ export function downloadPDF(options: PDFReportOptions): void {
       textColor: [40, 40, 40],
     },
     alternateRowStyles: {
-      fillColor: [245, 248, 245],
+      fillColor: [240, 247, 248],
     },
     styles: {
       lineColor: [220, 220, 220],
@@ -86,7 +86,7 @@ export function downloadPDF(options: PDFReportOptions): void {
       if (data.section === 'body' && data.column.index === lastColIndex) {
         const val = String(data.cell.raw).toLowerCase();
         if (val === 'present') {
-          data.cell.styles.textColor = [45, 106, 79];
+          data.cell.styles.textColor = [0, 83, 91];
           data.cell.styles.fontStyle = 'bold';
         } else if (val === 'absent') {
           data.cell.styles.textColor = [200, 60, 60];

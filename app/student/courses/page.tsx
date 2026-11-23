@@ -8,6 +8,7 @@ import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session, AttendanceRecord } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 export default function StudentCoursesPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function StudentCoursesPage() {
     return () => clearInterval(interval);
   }, []);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [code, setCode] = useState('');
   const [enrollmentKey, setEnrollmentKey] = useState('');
   const [joining, setJoining] = useState(false);
@@ -97,7 +99,7 @@ export default function StudentCoursesPage() {
 
       if (isMounted) setIsLoading(false);
     }).catch(e => {
-      console.error(e);
+      if (isMounted) setLoadError(errorMessage(e, 'Could not load your courses.'));
       if (isMounted) setIsLoading(false);
     });
 
@@ -132,6 +134,7 @@ export default function StudentCoursesPage() {
     <div className="bg-background">
       <TopAppBar title="Courses" />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+        {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
 
         {/* Segmented control */}
         <div className="flex gap-1 bg-surface-container-high p-1 rounded-xl mb-6">

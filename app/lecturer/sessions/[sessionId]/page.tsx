@@ -4,14 +4,14 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { subscribeToSession, endSession, syncSessionPhase, startPhase2Early } from '@/lib/firebase/sessions.service';
 import { subscribeToSessionAttendance, getSessionAttendance, awardFullMarksAndEnd, recordManualOverride } from '@/lib/firebase/attendance.service';
-import { getEnrolledStudents } from '@/lib/firebase/courses.service';
+import { getEnrolledStudents, getCourseById } from '@/lib/firebase/courses.service';
 import { useAuthStore } from '@/store/auth.store';
-import { Session, AttendanceRecord, UserProfile } from '@/types';
+import { Session, AttendanceRecord, UserProfile, Course } from '@/types';
 import { formatCountdown, getPhaseInfo } from '@/lib/utils/session.utils';
-import { generateSessionCSV } from '@/lib/utils/csv.utils';
-import { generateSessionPDF } from '@/lib/utils/pdf.utils';
-import { calculateGpsDistance } from '@/lib/utils/gps.utils';
+import { downloadCSV } from '@/lib/utils/csv.utils';
+import { downloadPDF } from '@/lib/utils/pdf.utils';
 import EmptyState from '@/components/ui/EmptyState';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 const GPS_FLAG_LABELS: Record<string, string> = {
   accuracy_missing: 'device did not report GPS accuracy',
@@ -41,6 +41,8 @@ export default function LiveSessionPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [attendees, setAttendees] = useState<AttendanceRecord[]>([]);
   const [enrolledStudents, setEnrolledStudents] = useState<UserProfile[]>([]);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [actionError, setActionError] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [ending, setEnding] = useState(false);
@@ -64,14 +66,20 @@ export default function LiveSessionPage() {
     const unsub1 = subscribeToSession(sessionId, (s) => {
       setSession(s);
       setIsLoading(false);
-      // When session loads, fetch enrolled students for the absent list
-      if (s?.courseId) {
-        getEnrolledStudents(s.courseId).then(setEnrolledStudents).catch(console.error);
-      }
     });
     const unsub2 = subscribeToSessionAttendance(sessionId, setAttendees);
     return () => { unsub1(); unsub2(); };
   }, [sessionId]);
+
+  // Roster and course settings (marks) are loaded once per course, not on every session update.
+  const courseId = session?.courseId;
+  useEffect(() => {
+    if (!courseId) return;
+    getEnrolledStudents(courseId).then(setEnrolledStudents)
+      .catch(e => setActionError(errorMessage(e, 'Could not load the class list.')));
+    getCourseById(courseId).then(setCourse)
+      .catch(e => setActionError(errorMessage(e, 'Could not load course settings.')));
+  }, [courseId]);
 
   // Countdown timer + auto phase transitions
   useEffect(() => {
@@ -93,9 +101,8 @@ export default function LiveSessionPage() {
     setEnding(true);
     setShowEndDialog(false);
     try {
-      const phase2Max = session?.phase2Duration ? 2 : 2; // Assuming max Phase 2 score is 2 from course marks
-      await awardFullMarksAndEnd(sessionId, phase2Max);
-    } catch (e) { setEnding(false); }
+      await awardFullMarksAndEnd(sessionId, course?.phase2Marks ?? 2);
+    } catch (e) { setEnding(false); setActionError(errorMessage(e, 'Could not end the session.')); }
   };
 
   const handleEndNormal = async () => {
@@ -103,7 +110,7 @@ export default function LiveSessionPage() {
     setShowEndDialog(false);
     try {
       await endSession(sessionId);
-    } catch (e) { setEnding(false); }
+    } catch (e) { setEnding(false); setActionError(errorMessage(e, 'Could not end the session.')); }
   };
 
   const handleStartPhase2Now = async () => {
@@ -112,7 +119,7 @@ export default function LiveSessionPage() {
     setShowPhase2Dialog(false);
     try {
       await startPhase2Early(sessionId, Number(phase2DurationInput));
-    } catch (e) { console.error(e); }
+    } catch (e) { setActionError(errorMessage(e, 'Could not open check-out.')); }
     finally { setEnding(false); }
   };
 
@@ -140,8 +147,8 @@ export default function LiveSessionPage() {
         studentName,
         matricNumber,
         activePhase: session.status as 'phase1_open' | 'phase2_open',
-        phase1Max: 3, // Fallback if course maxes aren't handy, but we should probably fetch the course
-        phase2Max: 2, 
+        phase1Max: course?.phase1Marks ?? 3,
+        phase2Max: course?.phase2Marks ?? 2, 
         lecturerId: user.userId,
         reason: overrideReason.trim() || null,
       });
@@ -307,6 +314,11 @@ export default function LiveSessionPage() {
       </header>
 
       <main className="px-5 pt-6 max-w-lg mx-auto">
+        {actionError && (
+          <div className="mb-4">
+            <ErrorBanner message={actionError} onDismiss={() => setActionError('')} />
+          </div>
+        )}
         {/* Live Session View */}
         {!isEnded && (
           <>

@@ -69,13 +69,13 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 
 | # | Item | Where | Status |
 |---|------|-------|--------|
-| 4.1 | "Overall Attendance" is hardcoded to `0%` — compute it. | `app/student/dashboard/page.tsx` | ☐ |
-| 4.2 | Manual override hardcodes 3/2 marks; "End & award marks" hardcodes 2 — use the course's `phase1Marks` / `phase2Marks`. | `app/lecturer/sessions/[sessionId]/page.tsx` | ☐ |
-| 4.3 | Home page `/` is an off-brand spinner with hardcoded colours. | `app/page.tsx` | ☐ |
-| 4.4 | One brand name everywhere (EduVerify vs Veriface vs Kinetic Clarity); replace boilerplate README. | app-wide, `README.md`, `DESIGN_SYSTEM.md` | ☐ |
-| 4.6 | **Export buttons are broken:** reports and live-session pages import `generateSessionCSV`, `generateSessionPDF`, `generateSemesterCSV/PDF`, `calculateGpsDistance` which don't exist, and call `downloadCSV`/`downloadPDF` without importing them. | `app/lecturer/courses/[courseId]/reports/page.tsx`, `app/lecturer/sessions/[sessionId]/page.tsx` | ☐ |
-| 4.7 | Builds ignore TypeScript and ESLint errors (`next.config.ts`), which is how 4.6 shipped — fix errors, then turn checking back on. | `next.config.ts` | ☐ |
-| 4.5 | Silent `catch` blocks — surface errors to the user. | app-wide | ☐ |
+| 4.1 | "Overall Attendance" is hardcoded to `0%` — compute it. | `app/student/dashboard/page.tsx` | ☑ |
+| 4.2 | Manual override hardcodes 3/2 marks; "End & award marks" hardcodes 2 — use the course's `phase1Marks` / `phase2Marks`. | `app/lecturer/sessions/[sessionId]/page.tsx` | ☑ |
+| 4.3 | Home page `/` is an off-brand spinner with hardcoded colours. | `app/page.tsx` | ☑ (styled loader; full landing page is Phase 6) |
+| 4.4 | One brand name everywhere (EduVerify vs Veriface vs Kinetic Clarity); replace boilerplate README. | app-wide, `README.md`, `DESIGN_SYSTEM.md` | ☑ |
+| 4.6 | **Export buttons are broken:** reports and live-session pages import `generateSessionCSV`, `generateSessionPDF`, `generateSemesterCSV/PDF`, `calculateGpsDistance` which don't exist, and call `downloadCSV`/`downloadPDF` without importing them. | `app/lecturer/courses/[courseId]/reports/page.tsx`, `app/lecturer/sessions/[sessionId]/page.tsx` | ☑ |
+| 4.7 | Builds ignore TypeScript and ESLint errors (`next.config.ts`), which is how 4.6 shipped — fix errors, then turn checking back on. | `next.config.ts` | ◐ TypeScript checks back on; ESLint still has older `any`/hook warnings |
+| 4.5 | Silent `catch` blocks — surface errors to the user. | app-wide | ☑ inline error banners (toasts in Phase 6) |
 
 ## Phase 5 — Performance & Cost
 
@@ -83,9 +83,9 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 |---|------|-------|--------|
 | 5.1 | Active-session listeners read the **entire session history** per course on every change — query `status in [...]` + `limit(1)`. | `sessions.service.ts` | ☐ |
 | 5.2 | Student dashboard re-renders every second — isolate the ticking countdown into its own component. | student dashboard | ☐ |
-| 5.3 | Live session page writes phase sync every second and refetches enrolled students on every snapshot — sync only at phase boundaries, fetch students once. | `app/lecturer/sessions/[sessionId]/page.tsx` | ☐ |
+| 5.3 | Live session page writes phase sync every second and refetches enrolled students on every snapshot — sync only at phase boundaries, fetch students once. | `app/lecturer/sessions/[sessionId]/page.tsx` | ◐ roster/course now load once; per-second phase sync still runs |
 | 5.4 | N+1 course fetches in `getStudentCourses` — batch with `where(documentId(), 'in', ...)`. | `courses.service.ts` | ☐ |
-| 5.5 | Remove unused deps (`recharts`, `html5-qrcode`, `qrcode.react`, `papaparse`); load Inter once via `next/font`; subset icon font or switch fully to `lucide-react`. | `package.json`, `app/layout.tsx`, `globals.css` | ☐ |
+| 5.5 | Remove unused deps (`recharts`, `html5-qrcode`, `qrcode.react`, `papaparse`); load Inter once via `next/font`; subset icon font or switch fully to `lucide-react`. | `package.json`, `app/layout.tsx`, `globals.css` | ◐ duplicate Inter import removed; unused deps still installed |
 
 ## Phase 6 — Premium UI/UX
 

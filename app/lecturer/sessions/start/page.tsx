@@ -10,6 +10,7 @@ import { getCurrentPosition } from '@/lib/utils/gps.utils';
 import { Course, Classroom } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 import dynamic from 'next/dynamic';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), {
   ssr: false,
@@ -33,6 +34,7 @@ export default function StartSessionPage() {
   const [customP2, setCustomP2] = useState('');
   const [starting, setStarting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
 
   // Classroom bottom sheet state
@@ -52,7 +54,7 @@ export default function StartSessionPage() {
         setClassrooms(cl);
         if (c?.defaultDuration) setTotalDuration(c.defaultDuration);
       })
-      .catch(console.error)
+      .catch(e => setLoadError(errorMessage(e, 'Could not load the course or classrooms.')))
       .finally(() => setIsLoading(false));
   }, [courseId]);
 
@@ -192,6 +194,7 @@ export default function StartSessionPage() {
     <div className="bg-background">
       <TopAppBar title="Start Session" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+        {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
 
         {/* Course Header */}
         {course && (

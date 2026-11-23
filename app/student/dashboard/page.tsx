@@ -7,9 +7,11 @@ import { getStudentCourses } from '@/lib/firebase/courses.service';
 import { subscribeToActiveSessionForCourse, subscribeToStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
 import { checkFaceEnrolled } from '@/lib/api/face.api';
+import { getStudentOverallAttendance } from '@/lib/firebase/attendance.service';
 import TopAppBar from '@/components/layout/TopAppBar';
 import EmptyState from '@/components/ui/EmptyState';
 import { Course, Session, AttendanceRecord } from '@/types';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -26,6 +28,8 @@ export default function StudentDashboard() {
   const [studentRecords, setStudentRecords] = useState<Record<string, AttendanceRecord>>({});
   const [faceEnrolled, setFaceEnrolled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [overall, setOverall] = useState<{ attended: number; total: number; percentage: number | null } | null>(null);
   const [tick, setTick] = useState(0);
   const firstName = user?.name || 'there';
 
@@ -47,6 +51,9 @@ export default function StudentDashboard() {
       if (!isMounted) return;
       setCourses(courseData);
       setFaceEnrolled(faceStatus.enrolled);
+      getStudentOverallAttendance(user.userId, courseData.map(c => c.courseId))
+        .then(res => { if (isMounted) setOverall(res); })
+        .catch(console.error);
 
       if (courseData.length === 0) {
         setIsLoading(false);
@@ -105,7 +112,7 @@ export default function StudentDashboard() {
 
       if (isMounted) setIsLoading(false);
     }).catch((e) => {
-      console.error(e);
+      if (isMounted) setLoadError(errorMessage(e, 'Could not load your courses.'));
       if (isMounted) setIsLoading(false);
     });
 
@@ -202,6 +209,7 @@ export default function StudentDashboard() {
     <div className="bg-background">
       <TopAppBar title="Dashboard" />
       <main className="px-5 pt-5 max-w-lg mx-auto pb-8 flex flex-col gap-5">
+        {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError('')} />}
 
         {/* Greeting */}
         <div>
@@ -267,8 +275,12 @@ export default function StudentDashboard() {
           </div>
           <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border-l-4 border-secondary-container">
             <span className="material-symbols-outlined text-outline text-xl mb-2 block">fact_check</span>
-            <p className="text-2xl font-bold text-on-surface">0%</p>
-            <p className="text-xs text-on-surface-variant mt-0.5">Overall Attendance</p>
+            <p className="text-2xl font-bold text-on-surface">
+              {overall === null ? '…' : overall.percentage === null ? '—' : `${overall.percentage}%`}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Overall Attendance{overall && overall.total > 0 ? ` · ${overall.attended}/${overall.total}` : ''}
+            </p>
           </div>
         </div>
 

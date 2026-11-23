@@ -204,3 +204,23 @@ export async function getCourseAttendanceOverview(courseId: string): Promise<Att
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ attendanceId: d.id, ...d.data() } as AttendanceRecord));
 }
+
+/**
+ * Overall attendance across the given courses: sessions the student has a record for,
+ * out of all sessions held in those courses. Same rule as the per-course page.
+ */
+export async function getStudentOverallAttendance(
+  studentId: string,
+  courseIds: string[],
+): Promise<{ attended: number; total: number; percentage: number | null }> {
+  if (!studentId || courseIds.length === 0) return { attended: 0, total: 0, percentage: null };
+  const { getSessionsForCourse } = await import('./sessions.service');
+  const [records, sessionLists] = await Promise.all([
+    getStudentAttendanceHistory(studentId),
+    Promise.all(courseIds.map(id => getSessionsForCourse(id).catch(() => []))),
+  ]);
+  const sessionIds = new Set(sessionLists.flat().map(s => s.sessionId));
+  const attended = new Set(records.filter(r => sessionIds.has(r.sessionId)).map(r => r.sessionId)).size;
+  const total = sessionIds.size;
+  return { attended, total, percentage: total > 0 ? Math.round((attended / total) * 100) : null };
+}

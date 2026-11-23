@@ -1,4 +1,4 @@
-# Kinetic Clarity Design System — Veriface Attendance App
+# EduVerify Design System ("Kinetic Clarity")
 ## Reference for all Next.js components
 
 ---

@@ -3,4 +3,4 @@ router = APIRouter()
 
 @router.get("/health")
 def health_check():
-    return {"status": "ok", "service": "veriface-attendance-api"}
+    return {"status": "ok", "service": "eduverify-api"}

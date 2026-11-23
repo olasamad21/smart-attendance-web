@@ -6,8 +6,8 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { getCourseById, getEnrolledStudents } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
 import { getSessionAttendance, getCourseAttendanceOverview } from '@/lib/firebase/attendance.service';
-import { generateSemesterCSV, generateSessionCSV } from '@/lib/utils/csv.utils';
-import { generateSemesterPDF, generateSessionPDF } from '@/lib/utils/pdf.utils';
+import { downloadCSV } from '@/lib/utils/csv.utils';
+import { downloadPDF } from '@/lib/utils/pdf.utils';
 import EmptyState from '@/components/ui/EmptyState';
 import { Course, Session, AttendanceRecord, UserProfile } from '@/types';
 

@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-app = FastAPI(title="Veriface Attendance API", version="1.0.0")
+app = FastAPI(title="EduVerify API", version="2.0.0")
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 

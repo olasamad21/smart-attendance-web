@@ -7,6 +7,7 @@ import { subscribeToActiveSessionForCourse } from '@/lib/firebase/sessions.servi
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -20,6 +21,7 @@ export default function LecturerDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeSessions, setActiveSessions] = useState<Record<string, Session | null>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!user?.userId) return;
@@ -40,7 +42,7 @@ export default function LecturerDashboard() {
           sessionUnsubs.push(unsub);
         });
       })
-      .catch(console.error)
+      .catch(e => { if (isMounted) setLoadError(errorMessage(e, 'Could not load your courses.')); })
       .finally(() => setIsLoading(false));
 
     return () => {
@@ -58,6 +60,7 @@ export default function LecturerDashboard() {
     <div className="bg-background">
       <TopAppBar title="Dashboard" />
       <main className="px-5 pt-5 max-w-lg mx-auto flex flex-col gap-5 pb-8">
+        {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError('')} />}
 
         {/* Greeting */}
         <section>

@@ -8,6 +8,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import AppDialog from '@/components/ui/AppDialog';
 import { averagePosition, suggestRadius } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
+import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), { 
   ssr: false,
@@ -18,6 +19,7 @@ export default function ClassroomsPage() {
   const { user } = useAuthStore();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -28,8 +30,9 @@ export default function ClassroomsPage() {
 
   const load = async () => {
     setIsLoading(true);
+    setLoadError('');
     try { setClassrooms(await getClassrooms()); }
-    catch (e) { console.error(e); }
+    catch (e) { setLoadError(errorMessage(e, 'Could not load classrooms.')); }
     finally { setIsLoading(false); }
   };
 
@@ -100,6 +103,7 @@ export default function ClassroomsPage() {
     <div className="bg-background">
       <TopAppBar title="Classrooms" />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
+        {loadError && <div className="mb-4"><ErrorBanner message={loadError} onDismiss={() => setLoadError('')} /></div>}
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-on-surface-variant">{classrooms.length} classroom{classrooms.length !== 1 ? 's' : ''}</p>
           <button onClick={() => setShowModal(true)}
