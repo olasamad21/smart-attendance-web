@@ -18,6 +18,7 @@ import Skeleton, { SkeletonCards } from '@/components/ui/Skeleton';
 import Ticker from '@/components/ui/Ticker';
 import { Course, Session, AttendanceRecord } from '@/types';
 import { getGreeting, greetingName } from '@/lib/utils/date.utils';
+import InstallAppCard from '@/components/pwa/InstallApp';
 
 /** Attendance below this is shown as "at risk" (common exam-eligibility rule). */
 const ATTENDANCE_TARGET = 75;
@@ -112,6 +113,8 @@ export default function StudentDashboard() {
         </header>
 
         {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError('')} />}
+
+        <InstallAppCard dismissKey="eduverify-install-dismissed" />
 
         {!faceEnrolled && !isLoading && (
           <Card className="flex items-start gap-3 border-warning/30 bg-warning-container/40">

@@ -12,6 +12,26 @@ const nextConfig: NextConfig = {
     // First face check after the backend starts loads the model; give it time.
     proxyTimeout: 120_000,
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+      {
+        // Always fetch the latest service worker so updates reach installed apps.
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       { source: '/backend/:path*', destination: `${BACKEND_URL}/:path*` },

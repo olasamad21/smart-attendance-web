@@ -113,9 +113,16 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 
 ## Phase 7 — Engagement & Platform
 
-- ☐ PWA: installable, offline shell, fast start.
-- ☐ Push notifications (FCM): "CSC 301 attendance is open — 8 min left".
-- ☐ Email/notification digests for lecturers.
+- ☑ PWA: web app manifest, generated icons (incl. maskable + Apple touch), service worker
+  (network-first pages with a branded offline page, cache-first hashed assets), in-app
+  "Install EduVerify" card (one-tap on Chrome/Edge/Android, Share → Add to Home Screen on iOS).
+  Verified in headless Chrome: no manifest or installability errors; offline page served.
+- ☐ Push notifications (FCM): "CSC 301 attendance is open — 8 min left". Needs an always-on
+  server to send pushes (Cloud Function or hosted backend) — deferred while running locally.
+- ☐ Email/notification digests for lecturers (same requirement).
+
+Note: an installed app is tied to the address it was installed from. Quick-tunnel links change on
+every `npm run demo`, so install from a stable address (localhost on the laptop, or a fixed domain).
 
 ---
 

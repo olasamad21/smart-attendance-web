@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#00535b" />
+  <title>Offline · EduVerify</title>
+  <style>
+    :root { --bg: #f9f9ff; --fg: #121c2c; --muted: #3e494a; --primary: #00535b; --on-primary: #fff; --card: #fff; --line: #bec8ca; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #10141a; --fg: #e1e2e9; --muted: #bfc8c9; --primary: #83d5df; --on-primary: #00363d; --card: #161c24; --line: #4d5859; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      background: var(--bg); color: var(--fg); font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    main { width: 100%; max-width: 360px; text-align: center; }
+    .logo { width: 72px; height: 72px; border-radius: 20px; margin: 0 auto 24px; display: block; }
+    h1 { font-size: 24px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    p { margin: 0 0 24px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+    button { width: 100%; height: 48px; border: 0; border-radius: 999px; background: var(--primary); color: var(--on-primary);
+      font: 600 15px/1 inherit; cursor: pointer; }
+    .hint { margin-top: 16px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="logo" src="/icons/icon-192.png" alt="" width="72" height="72" />
+    <h1>You're offline</h1>
+    <p>EduVerify needs a connection to check your location and face and to record attendance. Reconnect to Wi-Fi or mobile data, then try again.</p>
+    <button onclick="location.reload()">Try again</button>
+    <p class="hint">This page reloads automatically when you're back online.</p>
+  </main>
+  <script>window.addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>

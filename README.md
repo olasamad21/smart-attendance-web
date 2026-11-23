@@ -39,6 +39,10 @@ reason), and can export CSV or PDF reports per session or per semester.
 - Location review flags for suspicious GPS: impossible travel, signs of fake-location apps.
 - Statistics, plus CSV and PDF exports.
 
+**Installable app**
+- Add EduVerify to the home screen (Android, iPhone, desktop Chrome/Edge): full-screen, app
+  icon, and a branded offline page when there's no connection.
+
 ## Security model
 
 - **The server decides attendance.** The browser only submits evidence (an aligned face crop

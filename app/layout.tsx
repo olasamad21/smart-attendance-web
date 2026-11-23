@@ -1,12 +1,25 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import AuthProvider from '@/components/AuthProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
+import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
   title: 'EduVerify — Smart Attendance',
   description: 'Attendance that verifies itself — face, liveness and location checks from any phone.',
+  applicationName: 'EduVerify',
+  appleWebApp: { capable: true, title: 'EduVerify', statusBarStyle: 'default' },
+  icons: { apple: '/icons/apple-touch-icon.png' },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9f9ff' },
+    { media: '(prefers-color-scheme: dark)', color: '#10141a' },
+  ],
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

@@ -12,6 +12,7 @@ import Badge from '@/components/ui/Badge';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Icon from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
+import InstallAppCard from '@/components/pwa/InstallApp';
 
 /** Profile screen shared by students and lecturers. */
 export default function ProfileView() {
@@ -118,6 +119,13 @@ export default function ProfileView() {
               </button>
             ))}
           </div>
+        </section>
+
+        {/* App install */}
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2 px-1">App</h3>
+          <InstallAppCard />
+          <p className="text-[11px] text-on-surface-variant mt-2 px-1">Installing works on Chrome, Edge and Android, and on iPhone via Safari.</p>
         </section>
 
         <Button variant="outline" size="lg" fullWidth icon="logout" loading={signingOut}
