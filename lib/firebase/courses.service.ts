@@ -1,7 +1,7 @@
 import {
   collection, doc, setDoc, getDoc, getDocs,
   query, where, orderBy, deleteDoc, updateDoc,
-  serverTimestamp, writeBatch
+  serverTimestamp, writeBatch, documentId
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Course, Enrollment, UserProfile } from '@/types';
@@ -161,10 +161,16 @@ export async function getStudentCourses(studentId: string): Promise<Course[]> {
   if (!studentId) return [];
   const q = query(collection(db, 'enrollments'), where('studentId', '==', studentId));
   const snapshot = await getDocs(q);
-  const courseIds = snapshot.docs.map(d => d.data().courseId as string);
+  const courseIds = Array.from(new Set(snapshot.docs.map(d => d.data().courseId as string)));
   if (courseIds.length === 0) return [];
-  const courses = await Promise.all(courseIds.map(id => getCourseById(id)));
-  return courses.filter(Boolean) as Course[];
+  // Batch reads: Firestore `in` accepts up to 30 ids per query (was one read per course).
+  const chunks: string[][] = [];
+  for (let i = 0; i < courseIds.length; i += 30) chunks.push(courseIds.slice(i, i + 30));
+  const snaps = await Promise.all(chunks.map(ids =>
+    getDocs(query(collection(db, 'courses'), where(documentId(), 'in', ids))),
+  ));
+  const byId = new Map(snaps.flatMap(sn => sn.docs).map(d => [d.id, { courseId: d.id, ...d.data() } as Course]));
+  return courseIds.map(id => byId.get(id)).filter(Boolean) as Course[];
 }
 
 export async function getEnrolledStudents(courseId: string): Promise<(UserProfile & { enrolledAt?: any })[]> {

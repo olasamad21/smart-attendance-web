@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { getStudentCourses, enrollStudent, getCourseByCodeAndKey } from '@/lib/firebase/courses.service';
 import { subscribeToActiveSessionForCourse, subscribeToStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
+import Ticker from '@/components/ui/Ticker';
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session, AttendanceRecord } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
@@ -17,12 +18,6 @@ export default function StudentCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeSessions, setActiveSessions] = useState<Record<string, Session | null>>({});
   const [studentRecords, setStudentRecords] = useState<Record<string, AttendanceRecord | null>>({});
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [code, setCode] = useState('');
@@ -167,9 +162,10 @@ export default function StudentCoursesPage() {
                 const session = activeSessions[course.courseId];
                 const record = studentRecords[course.courseId];
                 
+                // Re-evaluated every second inside <Ticker>, so only this button re-renders.
+                const renderButton = () => {
                 let buttonState = null;
                 if (session) {
-                  const dummy = tick; // trigger re-render on tick
                   const phaseInfo = getPhaseInfo(session);
                   const isPhase1Done = record?.phase1Status === 'present';
                   const isPhase2Done = record?.phase2Status === 'present';
@@ -224,6 +220,8 @@ export default function StudentCoursesPage() {
                     );
                   }
                 }
+                return buttonState;
+                };
 
                 return (
                 <div key={course.courseId} className="bg-surface-container-lowest rounded-2xl p-4 card-shadow border border-outline-variant/20 relative overflow-hidden">
@@ -243,7 +241,7 @@ export default function StudentCoursesPage() {
                     </div>
                     <h3 className="text-base font-semibold text-on-surface mt-1">{course.courseTitle}</h3>
                     <p className="text-xs text-on-surface-variant mt-0.5">{course.lecturerName}</p>
-                    {buttonState}
+                    {session && <Ticker>{renderButton}</Ticker>}
                   </div>
                 </div>
                 );

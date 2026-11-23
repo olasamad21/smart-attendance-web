@@ -81,11 +81,11 @@ Hosting: **local demo on the laptop** (`npm run demo`) — Next.js + Python API 
 
 | # | Item | Where | Status |
 |---|------|-------|--------|
-| 5.1 | Active-session listeners read the **entire session history** per course on every change — query `status in [...]` + `limit(1)`. | `sessions.service.ts` | ☐ |
-| 5.2 | Student dashboard re-renders every second — isolate the ticking countdown into its own component. | student dashboard | ☐ |
-| 5.3 | Live session page writes phase sync every second and refetches enrolled students on every snapshot — sync only at phase boundaries, fetch students once. | `app/lecturer/sessions/[sessionId]/page.tsx` | ◐ roster/course now load once; per-second phase sync still runs |
-| 5.4 | N+1 course fetches in `getStudentCourses` — batch with `where(documentId(), 'in', ...)`. | `courses.service.ts` | ☐ |
-| 5.5 | Remove unused deps (`recharts`, `html5-qrcode`, `qrcode.react`, `papaparse`); load Inter once via `next/font`; subset icon font or switch fully to `lucide-react`. | `package.json`, `app/layout.tsx`, `globals.css` | ◐ duplicate Inter import removed; unused deps still installed |
+| 5.1 | Active-session listeners read the **entire session history** per course on every change — query `status in [...]` + `limit(1)`. | `sessions.service.ts` | ☑ (no composite index needed) |
+| 5.2 | Student dashboard re-renders every second — isolate the ticking countdown into its own component. | student dashboard | ☑ `<Ticker>` re-renders only countdowns |
+| 5.3 | Live session page writes phase sync every second and refetches enrolled students on every snapshot — sync only at phase boundaries, fetch students once. | `app/lecturer/sessions/[sessionId]/page.tsx` | ☑ |
+| 5.4 | N+1 course fetches in `getStudentCourses` — batch with `where(documentId(), 'in', ...)`. | `courses.service.ts` | ☑ |
+| 5.5 | Remove unused deps (`recharts`, `html5-qrcode`, `qrcode.react`, `papaparse`); load Inter once via `next/font`; subset icon font or switch fully to `lucide-react`. | `package.json`, `app/layout.tsx`, `globals.css` | ◐ unused deps removed, Inter loaded once; icon font not yet subset |
 
 ## Phase 6 — Premium UI/UX
 

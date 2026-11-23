@@ -84,14 +84,21 @@ export default function LiveSessionPage() {
   // Countdown timer + auto phase transitions
   useEffect(() => {
     if (!session || session.status === 'ended') return;
-    const timer = setInterval(async () => {
-      const synced = await syncSessionPhase(session);
-      if (synced.status !== session.status) return;
+    let syncing = false;
+    const tick = () => {
       const info = getPhaseInfo(session);
       setTimeLeft(info.remaining);
-    }, 1000);
+      // Write to Firestore only when the phase actually changes (not every second).
+      // The snapshot listener then delivers the updated session and restarts this effect.
+      if (info.status !== session.status && !syncing) {
+        syncing = true;
+        syncSessionPhase(session).catch(e => setActionError(errorMessage(e, 'Could not update the session phase.')));
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [session, sessionId]);
+  }, [session]);
 
   const handleEnd = () => {
     setShowEndDialog(true);

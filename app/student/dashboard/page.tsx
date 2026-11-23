@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { getStudentCourses } from '@/lib/firebase/courses.service';
 import { subscribeToActiveSessionForCourse, subscribeToStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { getPhaseInfo, formatCountdown } from '@/lib/utils/session.utils';
+import Ticker from '@/components/ui/Ticker';
 import { checkFaceEnrolled } from '@/lib/api/face.api';
 import { getStudentOverallAttendance } from '@/lib/firebase/attendance.service';
 import TopAppBar from '@/components/layout/TopAppBar';
@@ -30,13 +31,8 @@ export default function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [overall, setOverall] = useState<{ attended: number; total: number; percentage: number | null } | null>(null);
-  const [tick, setTick] = useState(0);
   const firstName = user?.name || 'there';
 
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!user?.userId) return;
@@ -259,7 +255,7 @@ export default function StudentDashboard() {
                   </div>
                 )}
                 {!session && <div className="mb-3" />}
-                {renderSmartButton(course, true)}
+                <Ticker>{() => renderSmartButton(course, true)}</Ticker>
               </div>
               );
             })}
@@ -335,7 +331,7 @@ export default function StudentDashboard() {
                         <p className="text-xs text-on-surface-variant mt-0.5">{course.lecturerName}</p>
                         {isActive && (
                           <div onClick={e => e.preventDefault()}>
-                            {renderSmartButton(course, false)}
+                            <Ticker>{() => renderSmartButton(course, false)}</Ticker>
                           </div>
                         )}
                       </div>

@@ -72,21 +72,33 @@ export async function getSessionById(sessionId: string): Promise<Session | null>
   return { sessionId: snap.id, ...snap.data() } as Session;
 }
 
+const OPEN_STATUSES: Session['status'][] = ['phase1_open', 'waiting', 'phase2_open'];
+
+/**
+ * Query for a course's not-yet-ended sessions only. Equality + `in` filters need no
+ * composite index; we pick the newest in memory (normally there is at most one).
+ * Previously every call downloaded the course's entire session history.
+ */
+function openSessionsQuery(courseId: string) {
+  return query(
+    collection(db, 'sessions'),
+    where('courseId', '==', courseId),
+    where('status', 'in', OPEN_STATUSES),
+  );
+}
+
+function newestSession(docs: { id: string; data: () => any }[]): Session | null {
+  const sessions = docs.map(d => ({ sessionId: d.id, ...d.data() } as Session));
+  if (sessions.length === 0) return null;
+  const created = (s: Session): number => s.createdAt?.toMillis?.() ?? (s.createdAt?.seconds ?? 0) * 1000;
+  return sessions.reduce((a, b) => (created(b) > created(a) ? b : a));
+}
+
 export async function getActiveSessionForCourse(courseId: string): Promise<Session | null> {
   if (!courseId) return null;
   try {
-    const q = query(
-      collection(db, 'sessions'),
-      where('courseId', '==', courseId),
-      orderBy('createdAt', 'desc')
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    // Filter in memory instead of using != operator
-    const activeSessions = snap.docs
-      .map(d => ({ sessionId: d.id, ...d.data() } as Session))
-      .filter(s => s.status !== 'ended');
-    return activeSessions.length > 0 ? activeSessions[0] : null;
+    const snap = await getDocs(openSessionsQuery(courseId));
+    return newestSession(snap.docs);
   } catch (e) {
     console.error('getActiveSessionForCourse error:', e);
     return null;
@@ -151,21 +163,8 @@ export function subscribeToActiveSessionForCourse(
   courseId: string,
   callback: (session: Session | null) => void
 ): () => void {
-  const q = query(
-    collection(db, 'sessions'),
-    where('courseId', '==', courseId),
-    orderBy('createdAt', 'desc')
-  );
-  return onSnapshot(q, (snap) => {
-    if (snap.empty) {
-      callback(null);
-      return;
-    }
-    const activeSessions = snap.docs
-      .map(d => ({ sessionId: d.id, ...d.data() } as Session))
-      .filter(s => s.status !== 'ended');
-    
-    callback(activeSessions.length > 0 ? activeSessions[0] : null);
+  return onSnapshot(openSessionsQuery(courseId), (snap) => {
+    callback(newestSession(snap.docs));
   }, (error) => {
     console.error('Error listening to active session:', error);
     callback(null);
