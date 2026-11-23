@@ -1,3 +1,6 @@
+/* Icon font (self-hosted from the material-symbols package) in the base layer, so
+   Tailwind text-* utilities can size icons over its default font-size: 24px. */
+@import "material-symbols/outlined.css" layer(base);
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -34,6 +37,18 @@
   --inverse-on-surface: #ebf1ff;
   --secondary-fixed: #acefe7;
   --primary-fixed: #9ff0fb;
+  /* Status colours */
+  --success: #1b6d3c;
+  --on-success: #ffffff;
+  --success-container: #c8f0d2;
+  --on-success-container: #0a3d1f;
+  --warning: #8a5300;
+  --on-warning: #ffffff;
+  --warning-container: #ffdcb3;
+  --on-warning-container: #2c1700;
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(18, 28, 44, 0.06), 0 2px 8px rgba(0, 83, 91, 0.06);
+  --shadow-2: 0 4px 12px rgba(18, 28, 44, 0.08), 0 12px 32px rgba(0, 83, 91, 0.10);
 }
 
 :root.dark {
@@ -68,6 +83,16 @@
   --inverse-on-surface: #273141;
   --secondary-fixed: #acefe7;
   --primary-fixed: #9ff0fb;
+  --success: #8fd8a5;
+  --on-success: #00391b;
+  --success-container: #0f5129;
+  --on-success-container: #c8f0d2;
+  --warning: #ffb95c;
+  --on-warning: #4a2800;
+  --warning-container: #6a3d00;
+  --on-warning-container: #ffdcb3;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 @theme {
@@ -102,8 +127,24 @@
   --color-inverse-on-surface: var(--inverse-on-surface);
   --color-secondary-fixed: var(--secondary-fixed);
   --color-primary-fixed: var(--primary-fixed);
+  --color-success: var(--success);
+  --color-on-success: var(--on-success);
+  --color-success-container: var(--success-container);
+  --color-on-success-container: var(--on-success-container);
+  --color-warning: var(--warning);
+  --color-on-warning: var(--on-warning);
+  --color-warning-container: var(--warning-container);
+  --color-on-warning-container: var(--on-warning-container);
 
-  --font-family-sans: 'Inter', sans-serif;
+  --shadow-card: var(--shadow-1);
+  --shadow-raised: var(--shadow-2);
+
+  --animate-fade-up: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-scale-in: scale-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+  --animate-toast-in: toast-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
   --spacing-container-padding: 20px;
   --spacing-stack-gap: 16px;
@@ -133,7 +174,35 @@
 }
 
 .card-shadow {
-  box-shadow: 0px 2px 8px rgba(0, 109, 119, 0.05);
+  box-shadow: var(--shadow-1);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes draw-check {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .card-interactive:active {

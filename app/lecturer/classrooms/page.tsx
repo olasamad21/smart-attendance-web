@@ -9,6 +9,7 @@ import AppDialog from '@/components/ui/AppDialog';
 import { averagePosition, suggestRadius } from '@/lib/utils/gps.utils';
 import dynamic from 'next/dynamic';
 import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
+import { useToast } from '@/components/ui/Toast';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), { 
   ssr: false,
@@ -17,6 +18,7 @@ const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), {
 
 export default function ClassroomsPage() {
   const { user } = useAuthStore();
+  const toast = useToast();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -83,6 +85,7 @@ export default function ClassroomsPage() {
       setShowModal(false);
       setForm({ name: '', latitude: '', longitude: '', radius: '100' });
       setLocationInfo('');
+      toast.success('Classroom added.');
       await load();
     } catch (e: any) { setError(e.message); }
     finally { setCreating(false); }
@@ -95,6 +98,7 @@ export default function ClassroomsPage() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     await deleteClassroom(deleteTarget.id);
+    toast.success(`Deleted ${deleteTarget.name}.`);
     setDeleteTarget(null);
     await load();
   };

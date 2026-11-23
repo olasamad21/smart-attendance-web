@@ -11,29 +11,9 @@ import { formatCountdown, getPhaseInfo } from '@/lib/utils/session.utils';
 import { downloadCSV } from '@/lib/utils/csv.utils';
 import { downloadPDF } from '@/lib/utils/pdf.utils';
 import EmptyState from '@/components/ui/EmptyState';
+import LiveSessionView, { GpsFlagBadge } from '@/components/lecturer/LiveSessionView';
 import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
-
-const GPS_FLAG_LABELS: Record<string, string> = {
-  accuracy_missing: 'device did not report GPS accuracy',
-  accuracy_too_precise: 'GPS accuracy unrealistically precise (common with fake-location apps)',
-  low_accuracy: 'low GPS accuracy (passed using the error margin)',
-  coordinates_too_round: 'coordinates suspiciously rounded',
-  impossible_travel: 'moved impossibly fast since the previous check-in',
-};
-
-/** Review-only warning when the server flagged a student's location. */
-function GpsFlagBadge({ record }: { record: AttendanceRecord }) {
-  const flags = Array.from(new Set([...(record.gpsFlags ?? []), ...(record.phase2GpsFlags ?? [])]))
-    .filter(f => f !== 'low_accuracy');
-  if (flags.length === 0) return null;
-  const detail = flags.map(f => GPS_FLAG_LABELS[f] ?? f).join('; ');
-  return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-error mt-0.5" title={`Location check: ${detail}`}>
-      <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>location_off</span>
-      Review location
-    </span>
-  );
-}
+import { useToast } from '@/components/ui/Toast';
 
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -56,6 +36,7 @@ export default function LiveSessionPage() {
 
   // Manual Override State
   const { user } = useAuthStore();
+  const toast = useToast();
   const [overrideStudent, setOverrideStudent] = useState<UserProfile | AttendanceRecord | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
   const [overrideError, setOverrideError] = useState('');
@@ -109,6 +90,7 @@ export default function LiveSessionPage() {
     setShowEndDialog(false);
     try {
       await awardFullMarksAndEnd(sessionId, course?.phase2Marks ?? 2);
+      toast.success('Session ended. Checked-in students received check-out marks.');
     } catch (e) { setEnding(false); setActionError(errorMessage(e, 'Could not end the session.')); }
   };
 
@@ -117,6 +99,7 @@ export default function LiveSessionPage() {
     setShowEndDialog(false);
     try {
       await endSession(sessionId);
+      toast.success('Session ended.');
     } catch (e) { setEnding(false); setActionError(errorMessage(e, 'Could not end the session.')); }
   };
 
@@ -126,6 +109,7 @@ export default function LiveSessionPage() {
     setShowPhase2Dialog(false);
     try {
       await startPhase2Early(sessionId, Number(phase2DurationInput));
+      toast.success('Check-out is now open.');
     } catch (e) { setActionError(errorMessage(e, 'Could not open check-out.')); }
     finally { setEnding(false); }
   };
@@ -160,6 +144,7 @@ export default function LiveSessionPage() {
         reason: overrideReason.trim() || null,
       });
       
+      toast.success(`${studentName} marked present manually.`);
       setOverrideStudent(null);
     } catch (e: any) {
       setOverrideError(e.message || 'Failed to record manual override.');
@@ -253,7 +238,7 @@ export default function LiveSessionPage() {
   return (
     <div className="bg-background pb-8">
       <header className="bg-surface sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center justify-between px-5 h-12 max-w-lg mx-auto">
+        <div className="flex items-center justify-between px-4 sm:px-6 h-14 max-w-6xl mx-auto">
           <Link href={`/lecturer/courses/${session?.courseId}`}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low text-primary">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -320,142 +305,29 @@ export default function LiveSessionPage() {
         </div>
       </header>
 
-      <main className="px-5 pt-6 max-w-lg mx-auto">
+      <main className="px-4 sm:px-6 pt-6 max-w-6xl mx-auto">
         {actionError && (
           <div className="mb-4">
             <ErrorBanner message={actionError} onDismiss={() => setActionError('')} />
           </div>
         )}
-        {/* Live Session View */}
-        {!isEnded && (
-          <>
-            {/* Status banner */}
-            <div className={`${getStatusColor()} rounded-2xl p-6 flex flex-col items-center mb-6 relative overflow-hidden`}>
-              <p className="text-xs font-bold text-on-primary-container uppercase tracking-widest mb-3 z-10">
-                {getStatusLabel()}
-              </p>
-              <p className="text-5xl font-bold tracking-tighter tabular-nums text-on-primary-container z-10">
-                {formatCountdown(timeLeft)}
-              </p>
-              <p className="text-xs text-on-primary-container/70 mt-1 z-10">remaining</p>
-            </div>
-
-            {/* Quick Actions */}
-            {session?.status === 'waiting' && (
-              <button
-                onClick={() => setShowPhase2Dialog(true)}
-                className="w-full mb-6 bg-secondary-container text-on-secondary-container rounded-xl h-12 font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all"
-              >
-                <span className="material-symbols-outlined text-lg">fast_forward</span>
-                Start Sign Out Now
-              </button>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
-                <p className="text-3xl font-bold text-on-surface">
-                  {attendees.filter(a => a.phase1Score > 0).length}
-                </p>
-                <p className="text-xs text-on-surface-variant mt-1">Signed in</p>
-              </div>
-              <div className="bg-surface-container-lowest rounded-2xl p-4 card-shadow text-center">
-                <p className="text-3xl font-bold text-on-surface">
-                  {attendees.filter(a => a.phase2Score > 0).length}
-                </p>
-                <p className="text-xs text-on-surface-variant mt-1">Signed out</p>
-              </div>
-            </div>
-
-            {/* Live attendee list */}
-            <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b border-surface-variant">
-                <h3 className="text-sm font-semibold text-on-surface">Live Attendance</h3>
-                <span className="bg-primary text-on-primary text-xs font-bold px-2 py-0.5 rounded-full">{attendees.length}</span>
-              </div>
-              {attendees.length === 0 ? (
-                <EmptyState
-                  icon="groups"
-                  title="No check-ins yet"
-                  description="Waiting for students to verify attendance."
-                />
-              ) : (
-                <div className="divide-y divide-surface-variant max-h-80 overflow-y-auto">
-                  {attendees.map((a, i) => (
-                    <div 
-                      key={a.attendanceId} 
-                      onClick={() => handleRowClick(a)}
-                      className={`flex items-center gap-3 p-3 ${(session?.status === 'phase1_open' || session?.status === 'phase2_open') ? 'cursor-pointer hover:bg-surface-container-low transition-colors' : ''}`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary text-xs font-bold">
-                        {i + 1}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-on-surface">{a.studentName}</p>
-                        <p className="text-xs text-on-surface-variant">{a.matricNumber}</p>
-                        <GpsFlagBadge record={a} />
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${a.phase1Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>
-                          P1
-                          {a.phase1VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
-                        </span>
-                        {session?.phase2Duration && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${a.phase2Score > 0 ? 'bg-secondary-container/30 text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'}`}>
-                            P2
-                            {a.phase2VerificationMethod === 'manual_override' && <span className="material-symbols-outlined text-[10px] text-warning" title="Manual Override">edit_note</span>}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-
-            {/* Not Checked In list */}
-            {absent.length > 0 && (
-              <div className="bg-surface-container-lowest rounded-2xl card-shadow overflow-hidden mt-6">
-                <div className="flex items-center justify-between p-4 border-b border-surface-variant">
-                  <h3 className="text-sm font-semibold text-on-surface">Not Checked In</h3>
-                  <span className="bg-surface-variant text-on-surface-variant text-xs font-bold px-2 py-0.5 rounded-full">{absent.length}</span>
-                </div>
-                <div className="divide-y divide-surface-variant max-h-80 overflow-y-auto">
-                  {absent.map((s, i) => (
-                    <div 
-                      key={s.userId} 
-                      onClick={() => handleRowClick(s)}
-                      className={`flex items-center gap-3 p-3 ${(session?.status === 'phase1_open' || session?.status === 'phase2_open') ? 'cursor-pointer hover:bg-surface-container-low transition-colors' : 'opacity-60'}`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant text-xs font-bold">
-                        {attendees.length + i + 1}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-on-surface">{s.name}</p>
-                        <p className="text-xs text-on-surface-variant">{s.matricNumber || '—'}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-surface-container text-on-surface-variant">
-                          P1
-                        </span>
-                        {session?.phase2Duration && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-surface-container text-on-surface-variant">
-                            P2
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+        {!isEnded && session && (
+          <LiveSessionView
+            session={session}
+            attendees={attendees}
+            absent={absent}
+            enrolledCount={enrolledStudents.length}
+            canOverride={session.status === 'phase1_open' || session.status === 'phase2_open'}
+            ending={ending}
+            onRowClick={handleRowClick}
+            onStartCheckout={() => setShowPhase2Dialog(true)}
+            onEnd={handleEnd}
+          />
         )}
 
         {/* Ended Session Report View */}
         {isEnded && (
-          <>
+          <div className="max-w-2xl mx-auto">
             {/* Session summary banner */}
             <div className="bg-surface-container rounded-2xl p-6 flex flex-col items-center mb-6">
               <span className="material-symbols-outlined text-3xl text-on-surface-variant mb-2">event_available</span>
@@ -551,7 +423,7 @@ export default function LiveSessionPage() {
                 />
               )}
             </div>
-          </>
+          </div>
         )}
       </main>
 

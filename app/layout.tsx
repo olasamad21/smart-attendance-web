@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AuthProvider from '@/components/AuthProvider';
+import { ToastProvider } from '@/components/ui/Toast';
+import { THEME_INIT_SCRIPT } from '@/lib/theme';
 
 export const metadata: Metadata = {
   title: 'EduVerify — Smart Attendance',
-  description: 'Facial recognition attendance management system',
+  description: 'Attendance that verifies itself — face, liveness and location checks from any phone.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,30 +16,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-          rel="stylesheet"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.getItem('theme') === 'dark') {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              } catch (_) {}
-            `,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="bg-background text-on-background min-h-[100dvh]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <body className="bg-background text-on-background min-h-[100dvh] font-sans antialiased">
         <AuthProvider>
-          {children}
+          <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
       </body>
     </html>

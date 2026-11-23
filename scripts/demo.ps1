@@ -66,7 +66,7 @@ function Wait-ForUrl([string]$url, [int]$timeoutSec, [string]$name) {
 $procs = @()
 try {
   # 1. Python API
-  Write-Host '[1/3] Starting face/attendance API on :8000 ...' -ForegroundColor Cyan
+  Write-Host '[1/3] Starting face/attendance API on :8000 (loading face models, ~30 s) ...' -ForegroundColor Cyan
   $procs += Start-Process -FilePath $python `
     -ArgumentList '-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000' `
     -WorkingDirectory (Join-Path $root 'python-backend') -WindowStyle Hidden -PassThru `

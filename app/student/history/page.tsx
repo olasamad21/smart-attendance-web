@@ -9,6 +9,7 @@ import { getStudentCourses } from '@/lib/firebase/courses.service';
 import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
 import { toDate } from '@/lib/utils/session.utils';
 import { AttendanceRecord, Course } from '@/types';
+import { SkeletonCards } from '@/components/ui/Skeleton';
 
 type DisplayRecord = AttendanceRecord & { displayTitle: string };
 
@@ -90,9 +91,7 @@ export default function AttendanceHistoryPage() {
         </select>
 
         {loading ? (
-          <div className="flex justify-center items-center mt-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-          </div>
+          <SkeletonCards count={5} className="h-20" />
         ) : filteredRecords.length === 0 ? (
           <EmptyState
             icon="fact_check"

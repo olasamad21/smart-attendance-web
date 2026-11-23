@@ -1,12 +1,15 @@
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import StudentBottomNav from '@/components/layout/StudentBottomNav';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
+  const pathname = usePathname();
+  // Check-in and face enrollment are focused, full-screen flows: no tab bar.
+  const fullScreen = pathname.startsWith('/student/verify') || pathname.startsWith('/student/enroll');
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== 'student')) {
@@ -29,9 +32,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="bg-background pb-20">
+    <div className={`bg-background ${fullScreen ? '' : 'pb-20'}`}>
       {children}
-      <StudentBottomNav />
+      {!fullScreen && <StudentBottomNav />}
     </div>
   );
 }

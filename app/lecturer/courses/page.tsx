@@ -7,9 +7,11 @@ import { subscribeToActiveSessionForCourse } from '@/lib/firebase/sessions.servi
 import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
 
 export default function LecturerCoursesPage() {
   const { user } = useAuthStore();
+  const toast = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -62,6 +64,7 @@ export default function LecturerCoursesPage() {
     setCreating(true); setFormError('');
     try {
       await createCourse({ courseTitle: form.courseTitle, courseCode: form.courseCode, lecturerId: user.userId, lecturerName: user.name, defaultDuration: form.defaultDuration, phase1Marks: form.phase1Marks, phase2Marks: form.phase2Marks });
+      toast.success(`Course ${form.courseCode.toUpperCase()} created.`);
       setShowModal(false);
       setForm({ courseTitle: '', courseCode: '', defaultDuration: 60, phase1Marks: 3, phase2Marks: 2 });
       setReloadTrigger(prev => prev + 1);

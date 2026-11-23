@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
-import { getActiveSessionForCourse, getSessionsForCourse, subscribeToSession } from '@/lib/firebase/sessions.service';
+import { getActiveSessionForCourse, getSessionsForCourse, subscribeToSession, getStudentSessionAttendance } from '@/lib/firebase/sessions.service';
 import { markAttendance } from '@/lib/api/face.api';
 import { getBestPosition, checkProximity } from '@/lib/utils/gps.utils';
 import { resolveSessionPhase } from '@/lib/utils/session.utils';
@@ -10,6 +10,9 @@ import { Session } from '@/types';
 import { useFaceTracker } from '@/hooks/useFaceTracker';
 import { useLivenessCheck } from '@/hooks/useLivenessCheck';
 import FaceCamera from '@/components/face/FaceCamera';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import Icon from '@/components/ui/Icon';
+import { VerifyShell, StatusHero, SuccessCheck, DistanceMeter, DetailRow } from '@/components/student/VerifyScreens';
 
 const GRACE_PERIOD_SECONDS = 45;
 
@@ -27,6 +30,8 @@ export default function VerifyPage() {
   const [gpsDistance, setGpsDistance] = useState(0);
   const [gpsError, setGpsError] = useState('');
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsFailKind, setGpsFailKind] = useState<'too_far' | 'other'>('other');
+  const [needsEnrollment, setNeedsEnrollment] = useState(false);
   const positionRef = useRef<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [confidence, setConfidence] = useState(0);
@@ -87,10 +92,12 @@ export default function VerifyPage() {
         setTimeout(() => startCamera(), 1000);
       } else {
         setGpsStatus('failed');
+        setGpsFailKind(result.reason === 'too_far' ? 'too_far' : 'other');
         setGpsError(result.message);
       }
     } catch (e: any) {
       setGpsStatus('failed');
+      setGpsFailKind('other');
       setGpsError(e.message);
     }
   };
@@ -140,6 +147,7 @@ export default function VerifyPage() {
     switch (result.status) {
       case 'recorded':
         setAwardedScore(result.score ?? 0);
+        if (navigator.vibrate) navigator.vibrate([30, 50, 80]);
         setStep('success');
         return;
       case 'already_recorded':
@@ -162,10 +170,31 @@ export default function VerifyPage() {
         setSessionEnded(true);
         return;
       case 'not_enrolled_face':
+        setNeedsEnrollment(true);
         fail(result.message, null);
         return;
-      default:
-        fail(result.message || 'Failed to record attendance.', result.status === 'error' ? 'camera' : null);
+      default: {
+        // The connection can drop while the server is still working (slow network, proxy
+        // timeout). Before reporting failure, check whether the attendance was saved anyway.
+        if (result.status === 'error') {
+          const record = await getStudentSessionAttendance(session.sessionId, user.userId).catch(() => null);
+          const saved = record && (phase === 'phase1'
+            ? record.phase1Status === 'present'
+            : record.phase2Status === 'present');
+          if (saved) {
+            setAwardedScore(phase === 'phase1' ? record.phase1Score : record.phase2Score);
+            if (navigator.vibrate) navigator.vibrate([30, 50, 80]);
+            setStep('success');
+            return;
+          }
+        }
+        fail(
+          result.status === 'error'
+            ? 'The connection dropped before we got an answer, and your attendance was not recorded. Please try again.'
+            : result.message || 'Failed to record attendance.',
+          result.status === 'error' ? 'camera' : null,
+        );
+      }
     }
   };
 
@@ -207,69 +236,63 @@ export default function VerifyPage() {
     };
   }, [session?.sessionId]);
 
-  const phaseLabel = phase === 'phase1' ? 'Phase 1 — Check In' : 'Phase 2 — Check Out';
+  const phaseLabel = phase === 'phase1' ? 'Check-in' : 'Check-out';
+  const title = session ? `${session.courseCode} · ${phaseLabel}` : phaseLabel;
+  const subtitle = session ? `${session.courseTitle} · ${session.classroomName}` : undefined;
+  const toDashboard = () => router.push('/student/dashboard');
+  const back = () => { stopCamera(); router.back(); };
 
   // Session ended takes priority over every other screen
   if (sessionEnded) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <div className="w-24 h-24 rounded-full bg-error-container/30 flex items-center justify-center mb-6">
-        <span className="material-symbols-outlined text-error text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>event_busy</span>
-      </div>
-      <h2 className="text-xl font-bold text-on-surface mb-2">Session Ended</h2>
-      <p className="text-sm text-on-surface-variant mb-8">The lecturer has ended this attendance session.</p>
-      <button onClick={() => router.push('/student/dashboard')}
-        className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
-        Back to Dashboard
-      </button>
-    </div>
+    <VerifyShell current={0} title={title} subtitle={subtitle} onBack={toDashboard}>
+      <StatusHero icon="event_busy" tone="neutral" title="Session ended"
+        actions={<Button size="lg" fullWidth onClick={toDashboard}>Back to dashboard</Button>}>
+        The lecturer has closed this attendance session. If you were in class, ask them to check you in manually.
+      </StatusHero>
+    </VerifyShell>
   );
 
   if (step === 'no_session') return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <span className="material-symbols-outlined text-outline text-6xl mb-4">event_busy</span>
-      <h2 className="text-xl font-bold text-on-surface mb-2">No Active Session</h2>
-      <p className="text-sm text-on-surface-variant mb-8">{noSessionMsg}</p>
-      <button onClick={() => router.back()} className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">Go Back</button>
-    </div>
+    <VerifyShell current={0} title={title} subtitle={subtitle} onBack={back}>
+      <StatusHero icon="event_available" tone="neutral" title="Nothing to check in to"
+        actions={<Button size="lg" fullWidth variant="outline" onClick={back}>Go back</Button>}>
+        {noSessionMsg}
+      </StatusHero>
+    </VerifyShell>
   );
 
   if (step === 'gps') return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <p className="text-xs font-bold text-primary uppercase tracking-wider mb-6 bg-primary/10 px-4 py-2 rounded-full">{phaseLabel}</p>
+    <VerifyShell current={0} title={title} subtitle={subtitle} onBack={back}>
       {gpsStatus === 'checking' && (
-        <>
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-pulse">
-            <span className="material-symbols-outlined text-primary text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>location_searching</span>
-          </div>
-          <h2 className="text-xl font-bold text-on-surface mb-2">
-            {gpsAccuracy === null ? 'Getting your location...' : 'Improving accuracy...'}
-          </h2>
-          <p className="text-sm text-on-surface-variant">
-            {gpsAccuracy === null ? 'Please allow location access when prompted' : `Current accuracy ±${gpsAccuracy}m`}
-          </p>
-        </>
+        <StatusHero icon="my_location" tone="primary" pulse
+          title={gpsAccuracy === null ? 'Finding your location' : 'Improving accuracy'}>
+          {gpsAccuracy === null
+            ? 'Allow location access if your phone asks.'
+            : <span className="tabular-nums">Current accuracy ±{gpsAccuracy}m. Hold on a moment.</span>}
+        </StatusHero>
       )}
       {gpsStatus === 'confirmed' && (
-        <>
-          <div className="w-20 h-20 rounded-full bg-secondary-container/30 flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-primary text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>location_on</span>
-          </div>
-          <h2 className="text-xl font-bold text-on-surface mb-2">Location Confirmed</h2>
-          <p className="text-sm text-on-surface-variant">You are {gpsDistance}m from the classroom{gpsAccuracy !== null ? ` (±${gpsAccuracy}m)` : ''}. Starting camera...</p>
-        </>
+        <StatusHero icon="where_to_vote" tone="success" title="You're in the classroom">
+          <span className="tabular-nums">{gpsDistance}m from {session?.classroomName ?? 'the classroom'}{gpsAccuracy !== null ? ` (±${gpsAccuracy}m)` : ''}.</span>
+          <br />Opening the camera…
+        </StatusHero>
       )}
       {gpsStatus === 'failed' && (
-        <>
-          <div className="w-20 h-20 rounded-full bg-error-container flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-error text-4xl" style={{fontVariationSettings:"'FILL' 1"}}>location_off</span>
-          </div>
-          <h2 className="text-xl font-bold text-on-surface mb-2">Location Check Failed</h2>
-          <p className="text-sm text-on-surface-variant mb-8">{gpsError}</p>
-          <button onClick={() => session && checkGPS(session)} className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95 mb-3">Try Again</button>
-          <button onClick={() => router.back()} className="w-full h-12 border border-outline-variant rounded-full text-sm text-on-surface-variant active:scale-95">Go Back</button>
-        </>
+        <StatusHero icon="location_off" tone="error" title="Location check failed"
+          actions={<>
+            <Button size="lg" fullWidth icon="refresh" onClick={() => session && checkGPS(session)}>Try again</Button>
+            <Button size="lg" fullWidth variant="outline" onClick={back}>Go back</Button>
+          </>}>
+          {gpsError}
+          {gpsFailKind === 'too_far' && session && (
+            <DistanceMeter distance={gpsDistance} radius={session.classroomRadius} accuracy={gpsAccuracy} />
+          )}
+          {gpsFailKind !== 'too_far' && (
+            <p className="mt-3 text-xs">Tip: GPS works best near a window or outdoors, with Wi-Fi turned on.</p>
+          )}
+        </StatusHero>
       )}
-    </div>
+    </VerifyShell>
   );
 
   if (step === 'camera') {
@@ -277,79 +300,72 @@ export default function VerifyPage() {
       <FaceCamera
         videoRef={tracker.videoRef}
         status={tracker.status === 'idle' ? 'starting' : tracker.status}
-        title="Verify Identity"
+        title={title}
         instruction={liveness.instruction}
-        subtext={phaseLabel}
+        subtext="Face check · keep your face inside the oval"
         tone={liveness.tone}
         steps={liveness.progress}
-        onBack={() => { stopCamera(); router.back(); }}
+        onBack={back}
         badge={
-          <div className="bg-secondary-container/90 backdrop-blur-sm px-3 h-8 rounded-full flex items-center gap-1">
-            <span className="material-symbols-outlined text-on-secondary-container text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
-            <span className="text-on-secondary-container text-xs font-medium">{gpsDistance}m</span>
+          <div className="bg-success-container/90 backdrop-blur-sm px-3 h-8 rounded-full flex items-center gap-1 text-on-success-container">
+            <Icon name="where_to_vote" filled className="text-sm" />
+            <span className="text-xs font-semibold tabular-nums">{gpsDistance}m</span>
           </div>
         }
       />
     );
   }
 
-
   if (step === 'processing') return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6" />
-      <h2 className="text-xl font-bold text-on-surface mb-2">Verifying your face...</h2>
-      <p className="text-sm text-on-surface-variant">Matching against your enrolled face data</p>
-    </div>
+    <VerifyShell current={1} title={title} subtitle={subtitle}>
+      <StatusHero icon="face" tone="primary" pulse title="Verifying it's you">
+        Matching your face and recording your {phaseLabel.toLowerCase()}. This takes a few seconds.
+      </StatusHero>
+    </VerifyShell>
   );
 
   if (step === 'success') return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <div className="w-24 h-24 rounded-full bg-secondary-container/30 flex items-center justify-center mb-6">
-        <span className="material-symbols-outlined text-primary text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
-      </div>
-      <h2 className="text-2xl font-bold text-on-surface mb-2">{phase === 'phase1' ? 'Check-in Recorded!' : 'Check-out Recorded!'}</h2>
-      <p className="text-sm text-on-surface-variant mb-2">Face match confidence: {confidence.toFixed(1)}%</p>
-      <p className="text-sm text-on-surface-variant mb-8">+{awardedScore} marks awarded</p>
-      <button onClick={() => router.push('/student/dashboard')}
-        className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
-        Back to Dashboard
-      </button>
-    </div>
+    <VerifyShell current={3} title={title} subtitle={subtitle}>
+      <StatusHero visual={<SuccessCheck />} title={phase === 'phase1' ? "You're checked in" : "You're checked out"}
+        actions={<Button size="lg" fullWidth onClick={toDashboard}>Done</Button>}>
+        <span>Your attendance has been recorded.</span>
+        <div className="mt-6 w-72 max-w-full mx-auto rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-card px-4 divide-y divide-outline-variant/30 text-left">
+          <DetailRow icon="stars" label="Marks awarded" value={`+${awardedScore}`} />
+          <DetailRow icon="face" label="Face match" value={`${confidence.toFixed(0)}%`} />
+          <DetailRow icon="where_to_vote" label="Distance" value={`${gpsDistance}m`} />
+          <DetailRow icon="schedule" label="Time" value={new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} />
+        </div>
+      </StatusHero>
+    </VerifyShell>
   );
 
   if (step === 'already_recorded') return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-        <span className="material-symbols-outlined text-primary text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>info</span>
-      </div>
-      <h2 className="text-xl font-bold text-on-surface mb-2">Already Recorded</h2>
-      <p className="text-sm text-on-surface-variant mb-8">Your attendance for this phase has already been recorded.</p>
-      <button onClick={() => router.push('/student/dashboard')}
-        className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
-        Back to Dashboard
-      </button>
-    </div>
+    <VerifyShell current={3} title={title} subtitle={subtitle}>
+      <StatusHero icon="task_alt" tone="success" title="Already recorded"
+        actions={<Button size="lg" fullWidth onClick={toDashboard}>Back to dashboard</Button>}>
+        Your {phaseLabel.toLowerCase()} for this session is already on record. Nothing else to do.
+      </StatusHero>
+    </VerifyShell>
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-5 max-w-md mx-auto text-center">
-      <div className="w-24 h-24 rounded-full bg-error-container flex items-center justify-center mb-6">
-        <span className="material-symbols-outlined text-error text-5xl" style={{fontVariationSettings:"'FILL' 1"}}>error</span>
-      </div>
-      <h2 className="text-xl font-bold text-on-surface mb-2">Verification Failed</h2>
-      <p className="text-sm text-on-surface-variant mb-8">{errorMsg}</p>
-      <div className="w-full flex flex-col gap-3">
-        {retryAction && (
-          <button onClick={() => (retryAction === 'gps' && session ? checkGPS(session) : startCamera())}
-            className="w-full h-12 bg-primary-container text-on-primary-container rounded-full text-sm font-semibold active:scale-95">
-            Try Again
-          </button>
+    <VerifyShell current={1} title={title} subtitle={subtitle} onBack={toDashboard}>
+      <StatusHero icon="sentiment_dissatisfied" tone="error" title="We couldn't verify you"
+        actions={<>
+          {retryAction && (
+            <Button size="lg" fullWidth icon="refresh"
+              onClick={() => (retryAction === 'gps' && session ? checkGPS(session) : startCamera())}>
+              Try again
+            </Button>
+          )}
+          {needsEnrollment && <ButtonLink href="/student/enroll" size="lg" fullWidth variant="tonal" icon="face">Set up face verification</ButtonLink>}
+          <Button size="lg" fullWidth variant="outline" onClick={toDashboard}>Back to dashboard</Button>
+        </>}>
+        {errorMsg}
+        {retryAction === 'camera' && (
+          <p className="mt-3 text-xs">Tip: face a window or lamp, remove sunglasses or a cap, and hold the phone at eye level.</p>
         )}
-        <button onClick={() => router.push('/student/dashboard')}
-          className="w-full h-12 border border-outline-variant rounded-full text-sm text-on-surface-variant active:scale-95">
-          Back to Dashboard
-        </button>
-      </div>
-    </div>
+      </StatusHero>
+    </VerifyShell>
   );
 }

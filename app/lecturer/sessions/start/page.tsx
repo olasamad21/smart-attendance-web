@@ -11,6 +11,7 @@ import { Course, Classroom } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 import dynamic from 'next/dynamic';
 import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
+import { useToast } from '@/components/ui/Toast';
 
 const ClassroomMap = dynamic(() => import('@/components/map/ClassroomMap'), {
   ssr: false,
@@ -22,6 +23,7 @@ export default function StartSessionPage() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get('courseId') || '';
   const { user } = useAuthStore();
+  const toast = useToast();
   const [course, setCourse] = useState<Course | null>(null);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
@@ -91,6 +93,7 @@ export default function StartSessionPage() {
         phase1Duration,
         phase2Duration,
       });
+      toast.success('Attendance session started.');
       router.push(`/lecturer/sessions/${session.sessionId}`);
     } catch (e: any) { setError(e.message || 'Failed to start session'); }
     finally { setStarting(false); }

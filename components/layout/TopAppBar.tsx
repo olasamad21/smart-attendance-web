@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface TopAppBarProps {
   showBack?: boolean;
@@ -14,30 +14,12 @@ interface TopAppBarProps {
 export default function TopAppBar({ showBack = false, isModal = false, isAuth = false, title }: TopAppBarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Check initial theme from HTML class or localStorage on mount
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
-
-  const toggleTheme = () => {
-    const root = document.documentElement;
-    const currentlyDark = root.classList.contains('dark');
-    
-    if (currentlyDark) {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
-  };
-
   const initials = user?.name?.charAt(0).toUpperCase() || '?';
-  const profileUrl = user?.role === 'lecturer' ? '/lecturer/profile' : '/student/profile';
+  const isLecturer = user?.role === 'lecturer';
+  const profileUrl = isLecturer ? '/lecturer/profile' : '/student/profile';
+  // Lecturer pages use the full width (with a sidebar on desktop); student pages are a
+  // phone-width column, so the bar lines up with that column.
+  const rowWidth = isLecturer ? 'max-w-none px-4 sm:px-6' : 'max-w-lg px-4 sm:px-5';
 
   if (isAuth) {
     return (
@@ -64,7 +46,7 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
 
   return (
     <header className="bg-surface w-full sticky top-0 z-50 shadow-sm">
-      <div className="flex items-center justify-between px-5 h-12 w-full max-w-lg mx-auto gap-4">
+      <div className={`flex items-center justify-between h-14 w-full mx-auto gap-4 ${rowWidth}`}>
         
         {/* LEFT SIDE */}
         <div className="flex items-center gap-2 overflow-hidden">
@@ -84,12 +66,13 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
             </>
           ) : (
             <div className="flex items-baseline gap-2 truncate">
-              <h1 className="text-xl font-bold text-primary tracking-tight shrink-0">
+              {/* On desktop the lecturer sidebar already shows the brand. */}
+              <h1 className={`text-xl font-bold text-primary tracking-tight shrink-0 ${isLecturer ? 'md:hidden' : ''}`}>
                 EduVerify
               </h1>
               {title && (
                 <>
-                  <span className="text-on-surface-variant/40 shrink-0">|</span>
+                  <span className={`text-on-surface-variant/40 shrink-0 ${isLecturer ? 'md:hidden' : ''}`}>|</span>
                   <span className="text-lg font-semibold text-on-surface truncate">{title}</span>
                 </>
               )}
@@ -100,18 +83,9 @@ export default function TopAppBar({ showBack = false, isModal = false, isAuth = 
         {/* RIGHT SIDE */}
         {!showBack && user && (
           <div className="flex items-center shrink-0 gap-2">
-            {title === 'Profile' ? (
-              <button 
-                title="Toggle Theme" 
-                onClick={toggleTheme}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all"
-              >
-                <span className="material-symbols-outlined text-[20px]">
-                  {isDark ? 'light_mode' : 'dark_mode'}
-                </span>
-              </button>
-            ) : (
-              <Link href={profileUrl} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
+            <ThemeToggle />
+            {title !== 'Profile' && (
+              <Link href={profileUrl} aria-label="Profile" className="w-9 h-9 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-all hover:bg-primary/90">
                 <span className="text-on-primary text-xs font-bold">{initials}</span>
               </Link>
             )}

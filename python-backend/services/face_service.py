@@ -4,15 +4,16 @@ Face enrollment and verification.
 Pipeline v2:
   * The browser sends tight, eye-aligned face crops (MediaPipe) that already passed
     quality and liveness checks.
-  * The server re-detects and aligns the face in each crop (RetinaFace by default) and
-    embeds it with Facenet512.
+  * The server re-detects and aligns the face in each crop (MTCNN by default — on CPU it
+    takes ~0.2 s vs ~19 s for RetinaFace, and the crops are already tight) and embeds it
+    with Facenet512.
   * Enrollment stores 3–5 separate pose samples (front / left / right ...). Verification
     compares against every sample and uses the best match, instead of one averaged vector.
   * Confident matches add an "adaptive" sample (capped) so the template keeps up with
     small appearance changes (glasses, haircut).
 
-Records from pipeline v1 (single full-frame photo, no detection) are incompatible with v2
-embeddings, so those users are asked to re-enroll.
+Records from older pipelines (v1: single full-frame photo; v2: RetinaFace) are not
+compatible with the current embeddings, so those users are asked to re-enroll.
 """
 import base64
 import io
@@ -27,9 +28,9 @@ from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 from services.firebase import get_db
 
-PIPELINE_VERSION = 2
+PIPELINE_VERSION = 3  # v3: MTCNN detector (v2 used RetinaFace — ~80x slower on CPU)
 MODEL_NAME = "Facenet512"
-DETECTOR = os.getenv("FACE_DETECTOR", "retinaface")
+DETECTOR = os.getenv("FACE_DETECTOR", "mtcnn")
 
 # Cosine similarity needed to accept a match. 0.70 == DeepFace's published Facenet512
 # cosine-distance threshold (0.30). Tune with `python -m scripts.face_calibration`.
@@ -81,6 +82,22 @@ def cosine_similarity(a: list, b: list) -> float:
     a_arr, b_arr = np.asarray(a), np.asarray(b)
     norm = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
     return float(np.dot(a_arr, b_arr) / norm) if norm else 0.0
+
+
+def warmup() -> float:
+    """
+    Load TensorFlow, RetinaFace and Facenet512 and run one inference of each, so the
+    first student's check-in doesn't pay the multi-minute cold start. Returns seconds taken.
+    """
+    import time
+    start = time.time()
+    blank = np.full((160, 160, 3), 128, dtype=np.uint8)
+    DeepFace.represent(img_path=blank, model_name=MODEL_NAME, detector_backend="skip", enforce_detection=False)
+    try:
+        DeepFace.represent(img_path=blank, model_name=MODEL_NAME, detector_backend=DETECTOR, enforce_detection=True)
+    except ValueError:
+        pass  # no face in a blank image — expected; the detector is now loaded
+    return time.time() - start
 
 
 # ── Storage ──────────────────────────────────────────────────────────────────

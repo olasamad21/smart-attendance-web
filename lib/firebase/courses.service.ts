@@ -206,3 +206,22 @@ export async function getEnrolledStudentCount(courseId: string): Promise<number>
   const snapshot = await getDocs(q);
   return snapshot.size;
 }
+
+/**
+ * Enrollment counts for a lecturer's courses: students per course and unique students overall.
+ * Batched with `in` queries (30 course ids per query).
+ */
+export async function getEnrollmentStats(courseIds: string[]): Promise<{ uniqueStudents: number; perCourse: Record<string, number> }> {
+  const perCourse: Record<string, number> = {};
+  const students = new Set<string>();
+  const ids = Array.from(new Set(courseIds));
+  for (let i = 0; i < ids.length; i += 30) {
+    const snap = await getDocs(query(collection(db, 'enrollments'), where('courseId', 'in', ids.slice(i, i + 30))));
+    snap.docs.forEach(d => {
+      const { courseId, studentId } = d.data() as { courseId: string; studentId: string };
+      perCourse[courseId] = (perCourse[courseId] ?? 0) + 1;
+      students.add(studentId);
+    });
+  }
+  return { uniqueStudents: students.size, perCourse };
+}

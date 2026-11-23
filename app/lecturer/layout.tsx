@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import LecturerBottomNav from '@/components/layout/LecturerBottomNav';
+import LecturerSidebar from '@/components/layout/LecturerSidebar';
 
 export default function LecturerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -29,9 +30,10 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="bg-background pb-20">
+    <div className="bg-background min-h-dvh pb-20 md:pb-0 md:pl-60">
+      <LecturerSidebar />
       {children}
-      <LecturerBottomNav />
+      <div className="md:hidden"><LecturerBottomNav /></div>
     </div>
   );
 }

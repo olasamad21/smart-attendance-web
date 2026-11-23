@@ -47,3 +47,21 @@ export function getDurationMinutes(start: any, end: any): number {
   const diffMs = endDate.getTime() - startDate.getTime();
   return Math.floor(diffMs / 60000);
 }
+
+/** Time-of-day greeting for the user's local clock. */
+export function getGreeting(date = new Date()): string {
+  const h = date.getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const TITLES = new Set(['dr', 'prof', 'professor', 'mr', 'mrs', 'ms', 'miss', 'engr', 'rev', 'sir']);
+
+/** Short name for greetings: "Ajayi Abdulsamad" -> "Ajayi", "Dr. Emma Okoro" -> "Dr. Emma". */
+export function greetingName(fullName?: string | null): string {
+  const parts = (fullName ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'there';
+  const isTitle = TITLES.has(parts[0].replace(/\.$/, '').toLowerCase());
+  return isTitle && parts.length > 1 ? `${parts[0]} ${parts[1]}` : parts[0];
+}

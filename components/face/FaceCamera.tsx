@@ -29,7 +29,7 @@ export default function FaceCamera({
   videoRef, status, title, instruction, subtext, tone = 'neutral', steps, onBack, badge,
 }: FaceCameraProps) {
   return (
-    <div className="w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto" style={{ height: 'calc(100dvh - 64px)' }}>
+    <div className="w-full overflow-hidden flex flex-col relative bg-black max-w-md mx-auto" style={{ height: '100dvh' }}>
       <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover -scale-x-100" autoPlay muted playsInline />
       <div className="absolute inset-0 z-10 flex flex-col">
         <div className="flex items-center justify-between p-4">

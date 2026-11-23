@@ -10,6 +10,7 @@ import { getSessionsForCourse } from '@/lib/firebase/sessions.service';
 import EmptyState from '@/components/ui/EmptyState';
 import { toDate } from '@/lib/utils/session.utils';
 import { AttendanceRecord, Course, Session } from '@/types';
+import Skeleton, { SkeletonCards } from '@/components/ui/Skeleton';
 
 type TimelineItem = {
   session: Session;
@@ -82,9 +83,7 @@ export default function CourseHistoryPage() {
       <TopAppBar title="Course History" showBack />
       <main className="px-5 pt-6 max-w-lg mx-auto pb-8">
         {loading ? (
-          <div className="flex justify-center items-center mt-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-          </div>
+          <div className="flex flex-col gap-4"><Skeleton className="h-28 w-full rounded-2xl" /><SkeletonCards count={4} className="h-16" /></div>
         ) : (
           <>
             {course && (

@@ -1,11 +1,26 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+import logging
 import os
 
-load_dotenv()
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="EduVerify API", version="2.0.0")
+load_dotenv()
+log = logging.getLogger("uvicorn.error")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Load the face models before accepting requests (set SKIP_WARMUP=1 to disable).
+    if os.getenv("SKIP_WARMUP") != "1":
+        from services.face_service import warmup
+        log.info("Loading face models...")
+        log.info("Face models ready in %.0fs", warmup())
+    yield
+
+
+app = FastAPI(title="EduVerify API", version="2.0.0", lifespan=lifespan)
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 

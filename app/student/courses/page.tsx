@@ -10,10 +10,13 @@ import TopAppBar from '@/components/layout/TopAppBar';
 import { Course, Session, AttendanceRecord } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner, { errorMessage } from '@/components/ui/ErrorBanner';
+import { SkeletonCards } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 export default function StudentCoursesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const toast = useToast();
   const [tab, setTab] = useState<'my' | 'join'>('my');
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeSessions, setActiveSessions] = useState<Record<string, Session | null>>({});
@@ -115,11 +118,11 @@ export default function StudentCoursesPage() {
       const course = await getCourseByCodeAndKey(code, enrollmentKey);
       if (!course) { setJoinMsg({type: 'error', text: 'Course not found. Check the code and password and try again.'}); return; }
       await enrollStudent(course.courseId, user.userId);
-      setJoinMsg({type: 'success', text: `Joined "${course.courseTitle}" successfully!`});
+      toast.success(`Joined ${course.courseCode} — ${course.courseTitle}`);
       setCode('');
       setEnrollmentKey('');
-      await load();
-      setTimeout(() => setTab('my'), 1500);
+      load();
+      setTab('my');
     } catch (e: any) {
       setJoinMsg({type: 'error', text: e.message || 'Failed to join course'});
     } finally { setJoining(false); }
@@ -143,7 +146,7 @@ export default function StudentCoursesPage() {
 
         {tab === 'my' ? (
           isLoading ? (
-            <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            <SkeletonCards count={3} className="h-28" />
           ) : courses.length === 0 ? (
             <EmptyState
               icon="school"
